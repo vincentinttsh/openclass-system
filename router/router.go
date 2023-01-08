@@ -2,6 +2,7 @@ package router
 
 import (
 	"os"
+	"time"
 	"vincentinttsh/openclass-system/config"
 	"vincentinttsh/openclass-system/pkg/mode"
 	"vincentinttsh/openclass-system/view"
@@ -23,6 +24,18 @@ func SetupRouter(app *fiber.App, config *config.Config) {
 	app.Use(favicon.New(favicon.Config{
 		File: "./web/static/favicon.ico",
 	}))
+
+	if mode.Mode() == mode.ReleaseMode {
+		app.Static("/static", "./web/static", fiber.Static{
+			Compress: true,
+			MaxAge:   31536000,
+		})
+	} else {
+		app.Static("/static", "./web/static", fiber.Static{
+			Browse:        true,
+			CacheDuration: 0 * time.Second,
+		})
+	}
 
 	app.Use(logger.New(logger.Config{
 		Format:     "[${time}] ${status} - ${latency} ${method} ${path}\n",
@@ -51,6 +64,9 @@ func SetupRouter(app *fiber.App, config *config.Config) {
 	app.Get("/auth/:provider", goth_fiber.BeginAuthHandler)
 	app.Get("/auth/callback/:provider", view.Login)
 	app.Get("/logout", view.Logout)
+
+	// home
+	app.Get("/", view.HomePage)
 
 	// Ping
 	app.Get("/ping", view.Ping)

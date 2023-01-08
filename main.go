@@ -15,16 +15,20 @@ import (
 	"vincentinttsh/openclass-system/view"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/template/django"
 	"github.com/joho/godotenv"
 )
 
 var app *fiber.App
 var serverConfig config.Config
+var engine *django.Engine
 
 func start() {
 	var fiberConfig fiber.Config
 
 	fiberConfig.AppName = "OpenClass System"
+	engine = django.New("./web/template", ".html")
+	fiberConfig.Views = engine
 
 	if mode.Mode() == mode.ReleaseMode {
 		fiberConfig.Prefork = true
@@ -38,6 +42,9 @@ func start() {
 		if err != nil {
 			log.Panic("Error loading .env file")
 		}
+
+		engine.Debug(true)
+		engine.Reload(true)
 
 		serverConfig.Dev()
 	}

@@ -3,6 +3,8 @@
         "godotenv",
         "gofiber",
         "gorm",
-        "joho"
+        "joho",
+        "markbates",
+        "TTSH"
     ]
 }
