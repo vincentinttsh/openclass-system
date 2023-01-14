@@ -8,19 +8,17 @@ import (
 	"os/signal"
 	"syscall"
 	"time"
-	"vincentinttsh/openclass-system/config"
-	"vincentinttsh/openclass-system/model"
 	"vincentinttsh/openclass-system/pkg/mode"
 	"vincentinttsh/openclass-system/router"
-	"vincentinttsh/openclass-system/view"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/favicon"
+	"github.com/gofiber/fiber/v2/middleware/logger"
+	"github.com/gofiber/fiber/v2/middleware/recover"
 	"github.com/gofiber/template/django"
-	"github.com/joho/godotenv"
 )
 
 var app *fiber.App
-var serverConfig config.Config
 var engine *django.Engine
 
 func start() {
@@ -34,26 +32,38 @@ func start() {
 		fiberConfig.Prefork = true
 		fiberConfig.DisableStartupMessage = true
 		fiberConfig.ReadTimeout = 10 * time.Second
-
-		serverConfig.Production()
 	} else {
-		err := godotenv.Load()
-
-		if err != nil {
-			log.Panic("Error loading .env file")
-		}
-
-		engine.Debug(true)
 		engine.Reload(true)
-
-		serverConfig.Dev()
 	}
 
 	app = fiber.New(fiberConfig)
 
-	model.InitFunc(&serverConfig)
-	view.InitFunc(&serverConfig)
-	router.SetupRouter(app, &serverConfig)
+	app.Use(favicon.New(favicon.Config{
+		File: "./web/static/favicon.ico",
+	}))
+
+	if mode.Mode() == mode.ReleaseMode {
+		app.Static("/static", "./web/static", fiber.Static{
+			Compress: true,
+			MaxAge:   31536000,
+		})
+	} else {
+		app.Static("/static", "./web/static", fiber.Static{
+			Browse:        true,
+			CacheDuration: 0 * time.Second,
+		})
+	}
+
+	app.Use(logger.New(logger.Config{
+		Format:     "[${time}] ${status} - ${latency} ${method} ${path}\n",
+		TimeFormat: "2006-Jan-02 15:04:05",
+		TimeZone:   "Asia/Taipei",
+	}))
+
+	app.Use(recover.New(recover.Config{
+		EnableStackTrace: true,
+	}))
+	router.SetupRouter(app)
 }
 
 func cleanup() {
@@ -74,6 +84,8 @@ func main() {
 			os.Exit(1)
 		}
 		os.Exit(0)
+	} else if arg == "setup" {
+
 	} else {
 		start()
 
@@ -93,7 +105,7 @@ func main() {
 			}
 		}()
 
-		if err := app.Listen(serverConfig.Address); err != nil {
+		if err := app.Listen(os.Getenv("PORT")); err != nil {
 			log.Panic(err)
 		}
 
