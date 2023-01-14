@@ -14,6 +14,8 @@ type User struct {
 	Locale         string       `gorm:"not null;default:'zh-TW'"`
 	Admin          bool         `gorm:"not null;index;default:false"`
 	SuperAdmin     bool         `gorm:"not null;index;default:false"`
+	Department     string       `gorm:"not null;check:department in ('hs','js', '')"`
+	Subject        string       `gorm:"not null;check:subject in ('chinese','english','math','science','social','other', '')"`
 	OrganizationID uint         `gorm:"not null;index"`
 	Organization   Organization `gorm:"constraint:OnUpdate:CASCADE,OnDelete:RESTRICT;"`
 }
