@@ -14,7 +14,7 @@ type User struct {
 	Locale         string       `gorm:"not null;default:'zh-TW'"`
 	Admin          bool         `gorm:"not null;index;default:false"`
 	SuperAdmin     bool         `gorm:"not null;index;default:false"`
-	Department     string       `gorm:"not null;check:department in ('hs','js', '')"`
+	Department     string       `gorm:"not null;check:department in ('sh','jh', '')"`
 	Subject        string       `gorm:"not null;check:subject in ('chinese','english','math','science','social','other', '')"`
 	OrganizationID uint         `gorm:"not null;index"`
 	Organization   Organization `gorm:"constraint:OnUpdate:CASCADE,OnDelete:RESTRICT;"`
@@ -46,9 +46,25 @@ func GetUserByGoogleID(id string) (User, error) {
 	return googleOauth2User.User, result.Error
 }
 
+// GetUserByID get user by id
+func GetUserByID(id uint) (User, error) {
+	var user User
+
+	result := db.First(&user, id)
+
+	return user, result.Error
+}
+
 // CreateUserFromGoogle create user from google oauth
 func CreateUserFromGoogle(googleOauth2User *GoogleOauth) error {
 	result := db.Create(&googleOauth2User)
+
+	return result.Error
+}
+
+// UpdateUser update user
+func UpdateUser(user *User, value *User) error {
+	result := db.Model(user).Updates(value)
 
 	return result.Error
 }

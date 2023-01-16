@@ -1,43 +1,50 @@
 package view
 
 import (
+	"context"
 	"os"
 	"time"
 	"vincentinttsh/openclass-system/pkg/mode"
 
+	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"
-	"golang.org/x/oauth2"
-	"golang.org/x/oauth2/google"
+	"google.golang.org/api/idtoken"
 )
 
-var googleOAuthConfig *oauth2.Config
 var baseURL string
 var signingKey []byte
 var domain string
+var googleClientID string
 
-type profileStruct struct {
-	ID     string `json:"id"`
-	Email  string `json:"email"`
-	Name   string `json:"name"`
-	Locale string `json:"locale"`
-	Domain string `json:"hd"`
+var tokenValidator *idtoken.Validator
+var validate *validator.Validate
+
+const (
+	infoMsgLevel = "info"
+	errMsgLevel  = "error"
+)
+
+type errorResponse struct {
+	FailedField string
+	Tag         string
+	Value       string
 }
 
+type msgStruct map[string]string
+
 func init() {
-	googleOAuthConfig = &oauth2.Config{
-		ClientID:     os.Getenv("OAUTH_KEY"),
-		ClientSecret: os.Getenv("OAUTH_SECRET"),
-		RedirectURL:  os.Getenv("OAUTH_CALLBACK_URL"),
-		Scopes: []string{
-			"https://www.googleapis.com/auth/userinfo.profile",
-			"https://www.googleapis.com/auth/userinfo.email",
-		},
-		Endpoint: google.Endpoint,
+	var err error
+
+	tokenValidator, err = idtoken.NewValidator(context.Background())
+	if err != nil {
+		panic(err)
 	}
 
 	baseURL = os.Getenv("BASE_URL")
 	signingKey = []byte(os.Getenv("JWT_SECRET"))
 	domain = os.Getenv("DOMAIN")
+	googleClientID = os.Getenv("OAUTH_KEY")
+	validate = validator.New()
 }
 
 func setCookie(name string, value string, session bool, expires time.Time) *fiber.Cookie {
@@ -57,4 +64,26 @@ func setCookie(name string, value string, session bool, expires time.Time) *fibe
 	cookie.Expires = expires
 
 	return cookie
+}
+
+func createMsg(level string, msg string) msgStruct {
+	return msgStruct{
+		"level": level,
+		"msg":   msg,
+	}
+}
+
+func validateStruct(data interface{}) []*errorResponse {
+	var errors []*errorResponse
+	err := validate.Struct(data)
+	if err != nil {
+		for _, err := range err.(validator.ValidationErrors) {
+			var element errorResponse
+			element.FailedField = err.StructNamespace()
+			element.Tag = err.Tag()
+			element.Value = err.Param()
+			errors = append(errors, &element)
+		}
+	}
+	return errors
 }

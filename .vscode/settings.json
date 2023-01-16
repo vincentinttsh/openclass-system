@@ -3,11 +3,16 @@
         "godotenv",
         "gofiber",
         "gorm",
+        "idtoken",
         "joho",
         "jwtware",
         "markbates",
         "openclass",
         "Prefork",
         "TTSH"
-    ]
+    ],
+    "sonarlint.connectedMode.project": {
+        "connectionId": "vincentinttsh",
+        "projectKey": "vincentinttsh_openclass-system"
+    }
 }

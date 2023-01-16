@@ -1,10 +1,7 @@
 package view
 
 import (
-	"encoding/json"
-	"errors"
-	"io"
-	"net/http"
+	"context"
 	"net/url"
 	"strings"
 	"time"
@@ -13,41 +10,9 @@ import (
 	"vincentinttsh/openclass-system/pkg/jwt"
 
 	"github.com/gofiber/fiber/v2"
-	"golang.org/x/oauth2"
+	"google.golang.org/api/idtoken"
 	"gorm.io/gorm"
 )
-
-// BeginAuthHandler is a function that redirect user to google oauth page
-func BeginAuthHandler(c *fiber.Ctx) error {
-	c.Cookie(setCookie("redirect", c.Query("redirect"), true, time.Now()))
-
-	return c.Redirect(googleOAuthConfig.AuthCodeURL("state"))
-}
-
-// googleOauth is a function that authenticate user with google oauth
-func googleOauth(c *fiber.Ctx) (profile profileStruct, err error) {
-	var token *oauth2.Token
-	var client *http.Client
-	var res *http.Response
-
-	if token, err = googleOAuthConfig.Exchange(oauth2.NoContext, c.Query("code")); err != nil {
-		err = errors.New("token exchange: " + err.Error())
-		return
-	}
-	client = googleOAuthConfig.Client(oauth2.NoContext, token)
-	if res, err = client.Get("https://www.googleapis.com/oauth2/v2/userinfo"); err != nil {
-		err = errors.New("get info" + err.Error())
-		return
-	}
-	defer res.Body.Close()
-
-	bytes, _ := io.ReadAll(res.Body)
-	if err = json.Unmarshal(bytes, &profile); err != nil {
-		err = errors.New("unmarshal: " + err.Error())
-	}
-
-	return
-}
 
 func signJWT(user model.User) (t string, expire time.Time, err error) {
 	expire = time.Now().Add(time.Hour * 72)
@@ -56,7 +21,6 @@ func signJWT(user model.User) (t string, expire time.Time, err error) {
 		"name":               user.Name,
 		"super_admin":        user.SuperAdmin,
 		"admin":              user.Admin,
-		"organization_id":    user.OrganizationID,
 		"organization_abbr":  user.Organization.Abbr,
 		"organization_level": user.Organization.Level,
 		"exp":                expire.Unix(),
@@ -69,26 +33,40 @@ func signJWT(user model.User) (t string, expire time.Time, err error) {
 
 // Login is a function that authenticate user
 func Login(c *fiber.Ctx) error {
-	var err error
-	var profile profileStruct
-
-	if profile, err = googleOauth(c); err != nil {
-		return c.Status(fiber.StatusInternalServerError).SendString(err.Error())
+	csrfCookie := c.Cookies("g_csrf_token")
+	csrfBody := c.FormValue("g_csrf_token")
+	if csrfCookie == "" || csrfCookie != csrfBody {
+		return c.Status(fiber.StatusUnauthorized).SendString("CSRF token mismatch")
 	}
 
+	var err error
+	var token string
+	var payload *idtoken.Payload
+	var profile map[string]interface{}
 	var domain []string
 	var user model.User
 	var googleUser model.GoogleOauth
-	domain = strings.Split(profile.Domain, ".")
-	user, err = model.GetUserByGoogleID(profile.ID)
+
+	token = c.FormValue("credential")
+	payload, err = tokenValidator.Validate(context.Background(), token, googleClientID)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).Render("base", fiber.Map{
+			"messages": []msgStruct{
+				createMsg(errMsgLevel, "Invalid token"),
+			},
+		})
+	}
+
+	profile = payload.Claims
+	domain = strings.Split(profile["hd"].(string), ".")
+	user, err = model.GetUserByGoogleID(profile["sub"].(string))
 	if err == gorm.ErrRecordNotFound {
 		googleUser = model.GoogleOauth{
-			ID: profile.ID,
+			ID: profile["sub"].(string),
 			User: model.User{
-				Account: profile.Email,
-				Email:   profile.Email,
-				Name:    profile.Name,
-				Locale:  profile.Locale,
+				Account: profile["email"].(string),
+				Email:   profile["email"].(string),
+				Name:    profile["name"].(string),
 				Organization: model.Organization{
 					Level: domain[1],
 					Abbr:  domain[0],
@@ -111,19 +89,48 @@ func Login(c *fiber.Ctx) error {
 
 	c.Cookie(setCookie("token", token, false, expire))
 
+	if user.Subject != "" && user.Department != "" {
+		return c.Redirect("/?status=login")
+	}
+
 	return c.Redirect("/auth/complete")
 }
 
 // Complete is a function that redirect user to next page
 func Complete(c *fiber.Ctx) error {
+	var next *url.URL
+	var user model.User
+	var err error
+
 	// Prevent open redirect vulnerability
 	// Next URL must be same host
-	next, err := url.ParseRequestURI(c.Cookies("redirect", baseURL))
+	next, err = url.ParseRequestURI(c.Cookies("redirect", baseURL))
 	if err != nil || next.Host != c.Hostname() {
 		next = &url.URL{Path: baseURL}
 	}
 
-	return c.Redirect(next.String())
+	user, err = model.GetUserByID(uint(c.Locals("id").(float64)))
+	if err == gorm.ErrRecordNotFound {
+		return c.RedirectBack("/")
+	}
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).Render("base", fiber.Map{
+			"messages": []msgStruct{
+				createMsg(errMsgLevel, serverErrorMsg),
+			},
+		})
+	}
+
+	return c.Render("auth/register", fiber.Map{
+		"messages": []msgStruct{
+			createMsg(infoMsgLevel, "請填寫以下資料，以完成註冊。"),
+		},
+		"username":          user.Name,
+		"email":             user.Email,
+		"department_choice": departmentChoice,
+		"subject_choice":    subjectChoice,
+		"csrf_token":        c.Locals("csrf_token"),
+	})
 }
 
 // Logout is a function that logout user
@@ -134,5 +141,14 @@ func Logout(c *fiber.Ctx) error {
 
 // LoginPage is a function that render login page
 func LoginPage(c *fiber.Ctx) error {
+	var bind fiber.Map
+	var status string = c.Query("status", "")
+
+	if status == "notfound" {
+		bind["messages"] = []msgStruct{
+			createMsg(infoMsgLevel, "請重新登入。"),
+		}
+	}
+
 	return c.Render("auth/login", fiber.Map{})
 }

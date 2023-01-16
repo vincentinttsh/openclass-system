@@ -1,6 +1,7 @@
 package router
 
 import (
+	"vincentinttsh/openclass-system/model"
 	"vincentinttsh/openclass-system/pkg/jwt"
 
 	"github.com/gofiber/fiber/v2"
@@ -21,6 +22,25 @@ func jwtVerify() fiber.Handler {
 
 		c.Locals("username", claims["name"])
 		c.Locals("id", claims["id"])
+
+		return c.Next()
+	}
+}
+
+func needLogin() fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		var user model.User
+		var err error
+
+		if c.Locals("id") == nil {
+			return c.Redirect("/login?status=notfound", fiber.StatusFound)
+		}
+
+		user, err = model.GetUserByID(uint(c.Locals("id").(float64)))
+		if err != nil {
+			return c.Redirect("/login?status=notfound", fiber.StatusFound)
+		}
+		c.Locals("user", user)
 
 		return c.Next()
 	}
