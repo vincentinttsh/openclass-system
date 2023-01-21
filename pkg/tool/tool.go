@@ -1,6 +1,8 @@
 package tool
 
-import "fmt"
+import (
+	"fmt"
+)
 
 // Print print value
 func Print(value interface{}) {

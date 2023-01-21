@@ -19,6 +19,8 @@ func signJWT(user model.User) (t string, expire time.Time, err error) {
 	claims := jwt.MapClaims{
 		"id":                 user.ID,
 		"name":               user.Name,
+		"subject":            user.Subject,
+		"department":         user.Department,
 		"super_admin":        user.SuperAdmin,
 		"admin":              user.Admin,
 		"organization_abbr":  user.Organization.Abbr,
@@ -50,9 +52,10 @@ func Login(c *fiber.Ctx) error {
 	token = c.FormValue("credential")
 	payload, err = tokenValidator.Validate(context.Background(), token, googleClientID)
 	if err != nil {
+		sugar.Errorln(c)
 		return c.Status(fiber.StatusUnauthorized).Render("base", fiber.Map{
 			"messages": []msgStruct{
-				createMsg(errMsgLevel, "Invalid token"),
+				createMsg(errMsgLevel, serverErrorMsg),
 			},
 		})
 	}
@@ -98,9 +101,18 @@ func Login(c *fiber.Ctx) error {
 
 // Complete is a function that redirect user to next page
 func Complete(c *fiber.Ctx) error {
+	var username interface{} = c.Locals("username")
+	var template string = "auth/register"
 	var next *url.URL
 	var user model.User
+	var form registerUser
 	var err error
+	var bind fiber.Map = fiber.Map{
+		"username":          username,
+		"csrf_token":        c.Locals("csrf_token"),
+		"department_choice": departmentChoice,
+		"subject_choice":    subjectChoice,
+	}
 
 	// Prevent open redirect vulnerability
 	// Next URL must be same host
@@ -111,26 +123,24 @@ func Complete(c *fiber.Ctx) error {
 
 	user, err = model.GetUserByID(uint(c.Locals("id").(float64)))
 	if err == gorm.ErrRecordNotFound {
+		c.Cookie(setCookie("token", "", false, time.Now()))
 		return c.RedirectBack("/")
 	}
 	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).Render("base", fiber.Map{
-			"messages": []msgStruct{
-				createMsg(errMsgLevel, serverErrorMsg),
-			},
-		})
+		sugar.Error(err)
+		bind["messages"] = []msgStruct{
+			createMsg(errMsgLevel, serverErrorMsg),
+		}
+		return c.Status(fiber.StatusInternalServerError).Render(template, bind)
 	}
 
-	return c.Render("auth/register", fiber.Map{
-		"messages": []msgStruct{
-			createMsg(infoMsgLevel, "請填寫以下資料，以完成註冊。"),
-		},
-		"username":          user.Name,
-		"email":             user.Email,
-		"department_choice": departmentChoice,
-		"subject_choice":    subjectChoice,
-		"csrf_token":        c.Locals("csrf_token"),
-	})
+	form.Username = user.Name
+	form.Email = user.Email
+	bind["form"] = form
+	bind["messages"] = []msgStruct{
+		createMsg(infoMsgLevel, "請填寫以下資料，以完成註冊"),
+	}
+	return c.Status(fiber.StatusOK).Render(template, bind)
 }
 
 // Logout is a function that logout user
@@ -141,14 +151,14 @@ func Logout(c *fiber.Ctx) error {
 
 // LoginPage is a function that render login page
 func LoginPage(c *fiber.Ctx) error {
-	var bind fiber.Map
+	var bind fiber.Map = fiber.Map{}
 	var status string = c.Query("status", "")
 
 	if status == "notfound" {
 		bind["messages"] = []msgStruct{
-			createMsg(infoMsgLevel, "請重新登入。"),
+			createMsg(infoMsgLevel, "請重新登入"),
 		}
 	}
 
-	return c.Render("auth/login", fiber.Map{})
+	return c.Status(fiber.StatusOK).Render("auth/login", bind)
 }

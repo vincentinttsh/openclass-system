@@ -1,12 +1,15 @@
 {
     "cSpell.words": [
+        "Errorln",
         "godotenv",
         "gofiber",
         "gorm",
+        "gtcsfield",
         "idtoken",
         "joho",
         "jwtware",
         "markbates",
+        "oneof",
         "openclass",
         "Prefork",
         "TTSH"

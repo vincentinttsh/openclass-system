@@ -50,5 +50,14 @@ func SetupRouter(app *fiber.App) {
 	needLogin := app.Group("", needLogin())
 	needCSRF := needLogin.Group("", csrf.New(csrfConfig))
 	needCSRF.Get("/auth/complete", view.Complete)
+	needCSRF.Get("/register", view.Register)
 	needCSRF.Post("/register", view.Register)
+
+	// need registered
+	needRegistered := needCSRF.Group("", needRegistered())
+	needRegistered.Get("/class/create", view.CreateOpenClass)
+	needRegistered.Post("/class/create", view.CreateOpenClass)
+	app.Use(func(c *fiber.Ctx) error {
+		return c.Status(fiber.StatusNotFound).SendString("Sorry can't find that!")
+	})
 }

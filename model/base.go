@@ -41,6 +41,7 @@ func init() {
 	panicAtError(db.AutoMigrate(&Organization{}))
 	panicAtError(db.AutoMigrate(&User{}))
 	panicAtError(db.AutoMigrate(&GoogleOauth{}))
+	panicAtError(db.AutoMigrate(&BaseClass{}))
 }
 
 func panicAtError(err error) {
@@ -51,8 +52,8 @@ func panicAtError(err error) {
 
 // BaseModel base model
 type BaseModel struct {
-	CreatedAt int64
-	UpdatedAt int64
+	CreatedAt time.Time
+	UpdatedAt time.Time
 	DeletedAt gorm.DeletedAt `gorm:"index"`
 	ID        uint           `gorm:"not null;autoIncrement;primaryKey"`
 }

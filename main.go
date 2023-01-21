@@ -10,6 +10,7 @@ import (
 	"time"
 	"vincentinttsh/openclass-system/pkg/mode"
 	"vincentinttsh/openclass-system/router"
+	"vincentinttsh/openclass-system/view"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/favicon"
@@ -47,11 +48,13 @@ func start() {
 			Compress: true,
 			MaxAge:   31536000,
 		})
+		// app.Static("/robots.txt", "./web/static/robots.txt")
 	} else {
 		app.Static("/static", "./web/static", fiber.Static{
 			Browse:        true,
 			CacheDuration: 0 * time.Second,
 		})
+		// app.Static("/robots.txt", "./web/static/robots.txt")
 	}
 
 	app.Use(logger.New(logger.Config{
@@ -101,6 +104,7 @@ func main() {
 			if err := app.Shutdown(); err != nil {
 				fmt.Println("Error in app.Shutdown():", err)
 			}
+			view.Logger.Sync()
 		}()
 
 		if err := app.Listen(os.Getenv("PORT")); err != nil {

@@ -16,17 +16,21 @@ func HomePage(c *fiber.Ctx) error {
 	switch status {
 	case "login":
 		bind["messages"] = []msgStruct{
-			createMsg(infoMsgLevel, "登入成功。"),
+			createMsg(infoMsgLevel, "登入成功"),
 		}
 	case "logout":
 		bind["messages"] = []msgStruct{
-			createMsg(infoMsgLevel, "登出成功。"),
+			createMsg(infoMsgLevel, "登出成功"),
 		}
 	case "already_registered":
 		bind["messages"] = []msgStruct{
-			createMsg(infoMsgLevel, "您已經註冊過了。"),
+			createMsg(infoMsgLevel, "您已經註冊過了"),
+		}
+	case "create_success":
+		bind["messages"] = []msgStruct{
+			createMsg(infoMsgLevel, "新增成功"),
 		}
 	}
 
-	return c.Render("home", bind)
+	return c.Status(fiber.StatusOK).Render("home", bind)
 }
