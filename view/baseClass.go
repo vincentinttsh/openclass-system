@@ -19,12 +19,11 @@ type baseClassStruct struct {
 func CreateOpenClass(c *fiber.Ctx) error {
 	var username interface{} = c.Locals("username")
 	var userID = uint(c.Locals("id").(float64))
-	var template string = "class/create"
+	var template string = "class/form"
 	var form baseClassStruct
 	var baseClass model.BaseClass
 	var valid bool
 	var err error
-	var date time.Time
 	var startTime time.Time
 	var endTime time.Time
 	var bind fiber.Map
@@ -49,27 +48,28 @@ func CreateOpenClass(c *fiber.Ctx) error {
 		return err
 	}
 
-	if date, err = time.Parse("02/01/2006", form.Date); err != nil {
+	if _, err = time.Parse("02/01/2006", form.Date); err != nil {
 		bind["messages"] = []msgStruct{
 			createMsg(warnMsgLevel, "日期格式錯誤"),
 		}
 		return c.Status(fiber.StatusBadRequest).Render(template, bind)
 	}
-	if startTime, err = time.Parse("03:04 PM", form.StartTime); err != nil {
+	if startTime, err = time.Parse("02/01/200603:04 PM", form.Date+form.StartTime); err != nil {
 		bind["messages"] = []msgStruct{
 			createMsg(warnMsgLevel, "開始時間格式錯誤"),
 		}
 		return c.Status(fiber.StatusBadRequest).Render(template, bind)
 	}
-	if endTime, err = time.Parse("03:04 PM", form.EndTime); err != nil {
+	if endTime, err = time.Parse("02/01/200603:04 PM", form.Date+form.EndTime); err != nil {
 		bind["messages"] = []msgStruct{
 			createMsg(warnMsgLevel, "結束時間格式錯誤"),
 		}
 		return c.Status(fiber.StatusBadRequest).Render(template, bind)
 	}
 
-	startTime = startTime.AddDate(date.Year(), int(date.Month()), date.Day())
-	endTime = endTime.AddDate(date.Year(), int(date.Month()), date.Day())
+	// 轉換時區
+	startTime = startTime.Add(time.Hour * -8)
+	endTime = endTime.Add(time.Hour * -8)
 
 	if endTime.Before(startTime) {
 		bind["messages"] = []msgStruct{
@@ -81,8 +81,8 @@ func CreateOpenClass(c *fiber.Ctx) error {
 	baseClass = model.BaseClass{
 		Name:      form.Name,
 		Classroom: form.Classroom,
-		Start:     startTime,
-		End:       endTime,
+		Start:     startTime.Local(),
+		End:       endTime.Local(),
 		TeacherID: userID,
 	}
 
@@ -92,9 +92,6 @@ func CreateOpenClass(c *fiber.Ctx) error {
 		}
 		sugar.Errorln(err)
 		return c.Status(fiber.StatusInternalServerError).Render(template, bind)
-	}
-	bind["messages"] = []msgStruct{
-		createMsg(infoMsgLevel, "新增成功"),
 	}
 
 	return c.Redirect("/?status=create_success")

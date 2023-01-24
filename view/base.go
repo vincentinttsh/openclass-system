@@ -58,6 +58,7 @@ func init() {
 	}
 	sugar = Logger.Sugar()
 
+	time.LoadLocation(os.Getenv("TIMEZONE"))
 	baseURL = os.Getenv("BASE_URL")
 	signingKey = []byte(os.Getenv("JWT_SECRET"))
 	domain = os.Getenv("DOMAIN")

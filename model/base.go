@@ -27,9 +27,12 @@ func init() {
 					Colorful:                  true,        // Disable color
 				},
 			),
+			PrepareStmt: true,
 		})
 	} else if mode.Mode() == mode.ReleaseMode {
-		db, err = gorm.Open(postgres.Open(""), &gorm.Config{})
+		db, err = gorm.Open(postgres.Open(""), &gorm.Config{
+			PrepareStmt: true,
+		})
 	} else {
 		db, err = gorm.Open(sqlite.Open("test.sqlite"), &gorm.Config{})
 	}

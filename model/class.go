@@ -31,3 +31,11 @@ func (object *BaseClass) Create() error {
 
 	return result.Error
 }
+
+// GetAllClass get all class
+func GetAllClass(classes *[]BaseClass) error {
+	result := db.Model(BaseClass{}).Joins("Teacher").
+		Where("Start > ?", time.Now()).Order("Start").Find(&classes)
+
+	return result.Error
+}
