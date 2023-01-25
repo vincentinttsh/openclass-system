@@ -1,6 +1,7 @@
 package view
 
 import (
+	"fmt"
 	"time"
 	"vincentinttsh/openclass-system/model"
 
@@ -95,4 +96,49 @@ func CreateOpenClass(c *fiber.Ctx) error {
 	}
 
 	return c.Redirect("/?status=create_success")
+}
+
+// ListUserOpenClass list user openclass class(GET)
+func ListUserOpenClass(c *fiber.Ctx) error {
+	var username interface{} = c.Locals("username")
+	var userID = uint(c.Locals("id").(float64))
+	var template string = "class/list"
+	var data []model.BaseClass
+	var classes []classBind
+	var err error
+	var bind fiber.Map = fiber.Map{
+		"username": username,
+	}
+
+	err = model.GetUserClass(userID, &data)
+	if err != nil {
+		sugar.Errorw("Get all class error", "error", err)
+		bind["messages"] = []msgStruct{
+			createMsg(errMsgLevel, "取得課程資料時發生錯誤"),
+		}
+		return c.Status(fiber.StatusInternalServerError).Render(template, bind)
+	}
+
+	classes = make([]classBind, len(data))
+	var calendar string = "http://www.google.com/calendar/event?action=TEMPLATE&text=%s公開授課（"
+	calendar += "%s)&dates=%s/%s&details=課程名稱：%s"
+	for i, v := range data {
+		classes[i] = classBind{
+			ClassID:   v.ID,
+			ClassName: v.Name,
+			Date:      v.Start.Format("2006年01月02日"),
+			Passwd:    v.AttendPassword,
+			Calendar: fmt.Sprintf(calendar,
+				departmentChoice[v.Teacher.Department],
+				v.Teacher.Name,
+				v.Start.Format("20060102T150405"),
+				v.End.Format("20060102T150405"),
+				v.Name,
+			) + "%0A" + fmt.Sprintf("授課老師：%s&location=%s&trp=false", v.Teacher.Name, v.Classroom),
+		}
+	}
+
+	bind["classes"] = &classes
+
+	return c.Status(fiber.StatusOK).Render(template, bind)
 }

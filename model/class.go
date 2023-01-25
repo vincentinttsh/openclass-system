@@ -35,7 +35,15 @@ func (object *BaseClass) Create() error {
 // GetAllClass get all class
 func GetAllClass(classes *[]BaseClass) error {
 	result := db.Model(BaseClass{}).Joins("Teacher").
-		Where("Start > ?", time.Now()).Order("Start").Find(&classes)
+		Where("start > ?", time.Now()).Order("start").Find(&classes)
+
+	return result.Error
+}
+
+// GetUserClass get all class of single user
+func GetUserClass(userID uint, classes *[]BaseClass) error {
+	result := db.Model(BaseClass{}).Joins("Teacher").
+		Where(&BaseClass{TeacherID: userID}).Order("`base_classes`.`id` DESC").Find(&classes)
 
 	return result.Error
 }

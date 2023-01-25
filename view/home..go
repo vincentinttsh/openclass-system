@@ -15,6 +15,7 @@ type classBind struct {
 	Duration  string `json:"duration"`
 	Teacher   string `json:"teacher"`
 	Calendar  string `json:"calendar"`
+	Passwd    string `json:"passwd"`
 }
 
 // HomePage is a function that render home page

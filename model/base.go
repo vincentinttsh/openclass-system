@@ -17,8 +17,11 @@ var db *gorm.DB
 func init() {
 	var err error
 	if mode.Mode() == mode.DebugMode {
-		db, err = gorm.Open(sqlite.Open("dev.sqlite"), &gorm.Config{
-			Logger: logger.New(
+		config := &gorm.Config{
+			PrepareStmt: true,
+		}
+		if os.Getenv("DB_LOG") == "True" {
+			config.Logger = logger.New(
 				log.New(os.Stdout, "\r\n", log.LstdFlags), // io writer
 				logger.Config{
 					SlowThreshold:             time.Second, // Slow SQL threshold
@@ -26,11 +29,11 @@ func init() {
 					IgnoreRecordNotFoundError: true,        // Ignore ErrRecordNotFound error for logger
 					Colorful:                  true,        // Disable color
 				},
-			),
-			PrepareStmt: true,
-		})
+			)
+		}
+		db, err = gorm.Open(sqlite.Open("dev.sqlite"), config)
 	} else if mode.Mode() == mode.ReleaseMode {
-		db, err = gorm.Open(postgres.Open(""), &gorm.Config{
+		db, err = gorm.Open(postgres.Open(os.Getenv("DB_URL")), &gorm.Config{
 			PrepareStmt: true,
 		})
 	} else {

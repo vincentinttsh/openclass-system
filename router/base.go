@@ -57,6 +57,7 @@ func SetupRouter(app *fiber.App) {
 	needRegistered := needCSRF.Group("", needRegistered())
 	needRegistered.Get("/class/create", view.CreateOpenClass)
 	needRegistered.Post("/class/create", view.CreateOpenClass)
+	needRegistered.Get("/my/class", view.ListUserOpenClass)
 	app.Use(func(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusNotFound).SendString("Sorry can't find that!")
 	})
