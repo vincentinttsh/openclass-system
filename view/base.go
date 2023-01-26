@@ -14,10 +14,6 @@ import (
 	"google.golang.org/api/idtoken"
 )
 
-const (
-	serverErrorMsg string = "伺服器錯誤，請連絡管理員"
-)
-
 var baseURL string
 var signingKey []byte
 var domain string
@@ -26,6 +22,8 @@ var googleClientID string
 var tokenValidator *idtoken.Validator
 var validate *validator.Validate
 var sugar *zap.SugaredLogger
+
+var timeOffset time.Duration
 
 // Logger is a global logger
 var Logger *zap.Logger
@@ -64,6 +62,8 @@ func init() {
 	domain = os.Getenv("DOMAIN")
 	googleClientID = os.Getenv("OAUTH_KEY")
 	validate = validator.New()
+	_, tmp := time.Now().Zone()
+	timeOffset = -1 * time.Duration(tmp) * time.Second
 }
 
 func setCookie(name string, value string, session bool, expires time.Time) *fiber.Cookie {

@@ -8,7 +8,7 @@ import (
 )
 
 type classBind struct {
-	ClassID   uint   `json:"class_id"`
+	ClassID   uint64 `json:"class_id"`
 	ClassName string `json:"class_name"`
 	Classroom string `json:"classroom"`
 	Date      string `json:"date"`
@@ -75,6 +75,10 @@ func HomePage(c *fiber.Ctx) error {
 	case "create_success":
 		bind["messages"] = []msgStruct{
 			createMsg(infoMsgLevel, "新增成功"),
+		}
+	case "update_success":
+		bind["messages"] = []msgStruct{
+			createMsg(infoMsgLevel, "更新成功"),
 		}
 	}
 

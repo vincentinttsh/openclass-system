@@ -154,6 +154,10 @@ func LoginPage(c *fiber.Ctx) error {
 	var bind fiber.Map = fiber.Map{}
 	var status string = c.Query("status", "")
 
+	if c.Locals("id") != nil {
+		return c.Redirect("/")
+	}
+
 	if status == "notfound" {
 		bind["messages"] = []msgStruct{
 			createMsg(infoMsgLevel, "請重新登入"),

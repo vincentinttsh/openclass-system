@@ -36,29 +36,35 @@ func SetupRouter(app *fiber.App) {
 		c.Append(fiber.HeaderReferrerPolicy, "no-referrer-when-downgrade")
 		return c.Next()
 	})
-	// auth
 	app.Post("/auth/callback/:provider", view.Login)
 
 	app.Use(jwtVerify())
 	app.Get("/metrics", monitor.New(monitor.Config{Title: "MyService Metrics Page"}))
 	app.Get("/login", view.LoginPage)
 	app.Get("/logout", view.Logout)
-	// home
 	app.Get("/", view.HomePage)
 
 	// need login
-	needLogin := app.Group("", needLogin())
-	needCSRF := needLogin.Group("", csrf.New(csrfConfig))
-	needCSRF.Get("/auth/complete", view.Complete)
-	needCSRF.Get("/register", view.Register)
-	needCSRF.Post("/register", view.Register)
+	needLoginPath := app.Group("", needLogin())
+	needCSRFPath := needLoginPath.Group("", csrf.New(csrfConfig))
+	needCSRFPath.Get("/auth/complete", view.Complete)
+	needCSRFPath.Get("/register", view.Register)
+	needCSRFPath.Post("/register", view.Register)
 
-	// need registered
-	needRegistered := needCSRF.Group("", needRegistered())
-	needRegistered.Get("/class/create", view.CreateOpenClass)
-	needRegistered.Post("/class/create", view.CreateOpenClass)
-	needRegistered.Get("/my/class", view.ListUserOpenClass)
+	// need registered (with CSRF)
+	needRegisteredPath := needCSRFPath.Group("", needRegistered())
+	needRegisteredPath.Get("/class/create", view.CreateOpenClass)
+	needRegisteredPath.Post("/class/create", view.CreateOpenClass)
+	needRegisteredPath.Get("/class/:id", view.GetOfModifyOpenClass)
+	needRegisteredPath.Post("/class/:id", view.GetOfModifyOpenClass)
+
+	// need registered  (without CSRF)
+	needRegisteredPath = needLoginPath.Group("", needRegistered())
+	needRegisteredPath.Get("/my/class", view.ListUserOpenClass)
 	app.Use(func(c *fiber.Ctx) error {
-		return c.Status(fiber.StatusNotFound).SendString("Sorry can't find that!")
+		return c.Status(fiber.StatusNotFound).Render("error/404", fiber.Map{
+			"status": fiber.StatusNotFound,
+			"title":  "找不到頁面",
+		})
 	})
 }

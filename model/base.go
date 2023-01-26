@@ -20,7 +20,7 @@ func init() {
 		config := &gorm.Config{
 			PrepareStmt: true,
 		}
-		if os.Getenv("DB_LOG") == "True" {
+		if os.Getenv("DB_LOG") == "true" {
 			config.Logger = logger.New(
 				log.New(os.Stdout, "\r\n", log.LstdFlags), // io writer
 				logger.Config{
@@ -61,5 +61,5 @@ type BaseModel struct {
 	CreatedAt time.Time
 	UpdatedAt time.Time
 	DeletedAt gorm.DeletedAt `gorm:"index"`
-	ID        uint           `gorm:"not null;autoIncrement;primaryKey"`
+	ID        uint64         `gorm:"not null;autoIncrement;primaryKey"`
 }

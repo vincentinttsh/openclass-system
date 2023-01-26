@@ -2,19 +2,13 @@ package view
 
 import (
 	"fmt"
+	"strconv"
 	"time"
 	"vincentinttsh/openclass-system/model"
 
 	"github.com/gofiber/fiber/v2"
+	"gorm.io/gorm"
 )
-
-type baseClassStruct struct {
-	Name      string `form:"className" validate:"required" i18n:"課程名稱"`
-	Classroom string `form:"classroom" validate:"required" i18n:"上課教室"`
-	Date      string `form:"date" validate:"required" i18n:"上課日期"`
-	StartTime string `form:"startTime" validate:"required" i18n:"開始時間"`
-	EndTime   string `form:"endTime" validate:"required" i18n:"結束時間"`
-}
 
 // CreateOpenClass create openclass class(POST, GET)
 func CreateOpenClass(c *fiber.Ctx) error {
@@ -35,9 +29,11 @@ func CreateOpenClass(c *fiber.Ctx) error {
 		EndTime:   time.Now().Add(time.Hour).Format("15:04 PM"),
 	}
 	bind = fiber.Map{
-		"username":   username,
-		"csrf_token": c.Locals("csrf_token"),
-		"form":       form,
+		"method":      "新增",
+		"permissions": "edit",
+		"username":    username,
+		"csrf_token":  c.Locals("csrf_token"),
+		"form":        form,
 	}
 
 	if c.Method() == fiber.MethodGet {
@@ -49,28 +45,23 @@ func CreateOpenClass(c *fiber.Ctx) error {
 		return err
 	}
 
-	if _, err = time.Parse("02/01/2006", form.Date); err != nil {
-		bind["messages"] = []msgStruct{
-			createMsg(warnMsgLevel, "日期格式錯誤"),
+	value := []string{form.Date, form.Date + form.StartTime, form.Date + form.EndTime}
+	parseKey := []string{"日期", "開始時間", "結束時間"}
+	parseFormat := []string{dateFormat, timeFormat, timeFormat}
+	for i := 0; i < len(value); i++ {
+		if _, err = time.Parse(parseFormat[i], value[i]); err != nil {
+			bind["messages"] = []msgStruct{
+				createMsg(warnMsgLevel, parseKey[i]+formatErrorMsg),
+			}
+			return c.Status(fiber.StatusBadRequest).Render(template, bind)
 		}
-		return c.Status(fiber.StatusBadRequest).Render(template, bind)
 	}
-	if startTime, err = time.Parse("02/01/200603:04 PM", form.Date+form.StartTime); err != nil {
-		bind["messages"] = []msgStruct{
-			createMsg(warnMsgLevel, "開始時間格式錯誤"),
-		}
-		return c.Status(fiber.StatusBadRequest).Render(template, bind)
-	}
-	if endTime, err = time.Parse("02/01/200603:04 PM", form.Date+form.EndTime); err != nil {
-		bind["messages"] = []msgStruct{
-			createMsg(warnMsgLevel, "結束時間格式錯誤"),
-		}
-		return c.Status(fiber.StatusBadRequest).Render(template, bind)
-	}
+	startTime, _ = time.Parse(timeFormat, form.Date+form.StartTime)
+	endTime, _ = time.Parse(timeFormat, form.Date+form.EndTime)
 
 	// 轉換時區
-	startTime = startTime.Add(time.Hour * -8)
-	endTime = endTime.Add(time.Hour * -8)
+	startTime = startTime.Add(timeOffset)
+	endTime = endTime.Add(timeOffset)
 
 	if endTime.Before(startTime) {
 		bind["messages"] = []msgStruct{
@@ -141,4 +132,101 @@ func ListUserOpenClass(c *fiber.Ctx) error {
 	bind["classes"] = &classes
 
 	return c.Status(fiber.StatusOK).Render(template, bind)
+}
+
+// GetOfModifyOpenClass openclass class(GET, POST)
+func GetOfModifyOpenClass(c *fiber.Ctx) error {
+	var username interface{} = c.Locals("username")
+	var classID uint64 = 0
+	var template string = "class/form"
+	var data model.BaseClass
+	var bind fiber.Map
+	var form baseClassStruct
+	var valid bool
+	var startTime time.Time
+	var endTime time.Time
+	var err error
+
+	if classID, err = strconv.ParseUint(c.Params("id"), 10, 64); err != nil {
+		return c.Status(fiber.StatusNotFound).Render("error/404", fiber.Map{})
+	}
+	bind = fiber.Map{
+		"method":      "修改",
+		"permissions": "edit",
+		"username":    username,
+		"csrf_token":  c.Locals("csrf_token"),
+	}
+
+	err = model.GetClass(classID, &data)
+	if err == gorm.ErrRecordNotFound {
+		return c.Status(fiber.StatusNotFound).Render("error/404", fiber.Map{
+			"status": fiber.StatusNotFound,
+			"title":  "找不到頁面",
+		})
+	}
+	if err != nil {
+		sugar.Errorw("Get class error", "error", err)
+		bind["messages"] = []msgStruct{
+			createMsg(errMsgLevel, getDBdataErrorMsg),
+		}
+		return c.Status(fiber.StatusInternalServerError).Render(template, bind)
+	}
+
+	if c.Method() == "GET" {
+		form = baseClassStruct{
+			Name:      data.Name,
+			Classroom: data.Classroom,
+			Date:      data.Start.Format("02/01/2006"),
+			StartTime: data.Start.Format("03:04 PM"),
+			EndTime:   data.End.Format("03:04 PM"),
+		}
+		bind["form"] = form
+
+		return c.Status(fiber.StatusOK).Render(template, bind)
+	}
+
+	valid, err = formValidate(c, &bind, &form, &template)
+	if !valid {
+		return err
+	}
+
+	value := []string{form.Date, form.Date + form.StartTime, form.Date + form.EndTime}
+	parseKey := []string{"日期", "開始時間", "結束時間"}
+	parseFormat := []string{dateFormat, timeFormat, timeFormat}
+	for i := 0; i < len(value); i++ {
+		if _, err = time.Parse(parseFormat[i], value[i]); err != nil {
+			bind["messages"] = []msgStruct{
+				createMsg(warnMsgLevel, parseKey[i]+formatErrorMsg),
+			}
+			return c.Status(fiber.StatusBadRequest).Render(template, bind)
+		}
+	}
+	startTime, _ = time.Parse(timeFormat, form.Date+form.StartTime)
+	endTime, _ = time.Parse(timeFormat, form.Date+form.EndTime)
+
+	// 轉換時區
+	startTime = startTime.Add(timeOffset)
+	endTime = endTime.Add(timeOffset)
+
+	if endTime.Before(startTime) {
+		bind["messages"] = []msgStruct{
+			createMsg(warnMsgLevel, "結束時間不得早於開始時間"),
+		}
+		return c.Status(fiber.StatusBadRequest).Render(template, bind)
+	}
+
+	data.Name = form.Name
+	data.Classroom = form.Classroom
+	data.Start = startTime.Local()
+	data.End = endTime.Local()
+
+	if err = data.Update(); err != nil {
+		bind["messages"] = []msgStruct{
+			createMsg(errMsgLevel, serverErrorMsg),
+		}
+		sugar.Errorln(err)
+		return c.Status(fiber.StatusInternalServerError).Render(template, bind)
+	}
+
+	return c.Redirect("/?status=update_success")
 }

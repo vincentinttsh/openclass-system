@@ -32,6 +32,13 @@ func (object *BaseClass) Create() error {
 	return result.Error
 }
 
+// Update update a class
+func (object *BaseClass) Update() error {
+	result := db.Save(&object)
+
+	return result.Error
+}
+
 // GetAllClass get all class
 func GetAllClass(classes *[]BaseClass) error {
 	result := db.Model(BaseClass{}).Joins("Teacher").
@@ -44,6 +51,13 @@ func GetAllClass(classes *[]BaseClass) error {
 func GetUserClass(userID uint, classes *[]BaseClass) error {
 	result := db.Model(BaseClass{}).Joins("Teacher").
 		Where(&BaseClass{TeacherID: userID}).Order("`base_classes`.`id` DESC").Find(&classes)
+
+	return result.Error
+}
+
+// GetClass get a class
+func GetClass(classID uint64, class *BaseClass) error {
+	result := db.Model(BaseClass{}).First(&class, classID)
 
 	return result.Error
 }
