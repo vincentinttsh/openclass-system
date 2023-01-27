@@ -6,43 +6,20 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
-type registerUser struct {
-	Username   string `form:"username" i18n:"姓名"`
-	Email      string `form:"email" i18n:"Email address"`
-	Department string `form:"department" i18n:"部門" validate:"required,oneof=sh jh"`
-	Subject    string `form:"subject" i18n:"授課科目" validate:"required,oneof=chinese english math science social other"`
-}
-
-var departmentChoice = map[string]string{
-	"sh": "高中部",
-	"jh": "國中部",
-}
-var subjectChoice = map[string]string{
-	"chinese": "國文",
-	"english": "英文",
-	"math":    "數學",
-	"science": "自然",
-	"social":  "社會",
-	"other":   "其他",
-}
-
 // Register is a function that handles user registration
 func Register(c *fiber.Ctx) error {
-	var username interface{} = c.Locals("username")
 	var template string = "auth/register"
 	var form registerUser
 	var user model.User
 	var updateFields model.User
 	var valid bool
 	var err error
-	var bind fiber.Map = fiber.Map{
-		"username":          username,
-		"department_choice": departmentChoice,
-		"subject_choice":    subjectChoice,
-		"csrf_token":        c.Locals("csrf_token"),
-	}
+	var bind fiber.Map = c.Locals("bind").(fiber.Map)
+	bind["department_choice"] = departmentChoice
+	bind["subject_choice"] = subjectChoice
+	bind["csrf_token"] = c.Locals("csrf_token")
 
-	user, err = model.GetUserByID(uint(c.Locals("id").(float64)))
+	user, err = model.GetUserByID(model.SQLBasePK(c.Locals("id").(float64)))
 	if err != nil {
 		return c.Redirect("/login?status=notfound", fiber.StatusFound)
 	}

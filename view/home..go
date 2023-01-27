@@ -7,28 +7,25 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
-type classBind struct {
-	ClassID   uint64 `json:"class_id"`
-	ClassName string `json:"class_name"`
-	Classroom string `json:"classroom"`
-	Date      string `json:"date"`
-	Duration  string `json:"duration"`
-	Teacher   string `json:"teacher"`
-	Calendar  string `json:"calendar"`
-	Passwd    string `json:"passwd"`
+type courseBind struct {
+	ClassID   model.SQLBasePK `json:"class_id"`
+	ClassName string          `json:"class_name"`
+	Classroom string          `json:"classroom"`
+	Date      string          `json:"date"`
+	Duration  string          `json:"duration"`
+	Teacher   string          `json:"teacher"`
+	Calendar  string          `json:"calendar"`
+	Passwd    string          `json:"passwd"`
 }
 
 // HomePage is a function that render home page
 func HomePage(c *fiber.Ctx) error {
-	var username interface{} = c.Locals("username")
-	var data []model.BaseClass
-	var classes []classBind
+	var data []model.Course
+	var courses []courseBind
 	var err error
-	var bind fiber.Map = fiber.Map{
-		"username": username,
-	}
+	var bind fiber.Map = c.Locals("bind").(fiber.Map)
 
-	err = model.GetAllClass(&data)
+	err = model.GetAllCourses(&data)
 	if err != nil {
 		sugar.Errorw("Get all class error", "error", err)
 		bind["messages"] = []msgStruct{
@@ -36,28 +33,28 @@ func HomePage(c *fiber.Ctx) error {
 		}
 	}
 
-	classes = make([]classBind, len(data))
+	courses = make([]courseBind, len(data))
 	var calendar string = "http://www.google.com/calendar/event?action=TEMPLATE&text=%s公開授課（"
 	calendar += "%s)&dates=%s/%s&details=課程名稱：%s"
 	for i, v := range data {
-		classes[i] = classBind{
+		courses[i] = courseBind{
 			ClassID:   v.ID,
 			ClassName: v.Name,
 			Classroom: v.Classroom,
 			Date:      v.Start.Format("2006年01月02日"),
 			Duration:  v.Start.Format("15:04") + " ~ " + v.End.Format("15:04"),
-			Teacher:   v.Teacher.Name,
+			Teacher:   v.User.Name,
 			Calendar: fmt.Sprintf(calendar,
-				departmentChoice[v.Teacher.Department],
-				v.Teacher.Name,
+				departmentChoice[v.User.Department],
+				v.User.Name,
 				v.Start.Format("20060102T150405"),
 				v.End.Format("20060102T150405"),
 				v.Name,
-			) + "%0A" + fmt.Sprintf("授課老師：%s&location=%s&trp=false", v.Teacher.Name, v.Classroom),
+			) + "%0A" + fmt.Sprintf("授課老師：%s&location=%s&trp=false", v.User.Name, v.Classroom),
 		}
 	}
 
-	bind["classes"] = &classes
+	bind["courses"] = &courses
 
 	switch c.Query("status", "") {
 	case "login":

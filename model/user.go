@@ -16,14 +16,14 @@ type User struct {
 	SuperAdmin     bool         `gorm:"not null;index;default:false"`
 	Department     string       `gorm:"not null;check:department in ('sh','jh', '')"`
 	Subject        string       `gorm:"not null;check:subject in ('chinese','english','math','science','social','other', '')"`
-	OrganizationID uint         `gorm:"not null;index"`
+	OrganizationID SQLBasePK    `gorm:"not null;index"`
 	Organization   Organization `gorm:"constraint:OnUpdate:CASCADE,OnDelete:RESTRICT;"`
 }
 
 // GoogleOauth google oauth map to user model
 type GoogleOauth struct {
 	BaseModel
-	ID     string `gorm:"not null;primary_key"`
+	ID     string `gorm:"not null;primaryKey"`
 	UserID string `gorm:"not null;index"`
 	User   User   `gorm:"constraint:OnUpdate:CASCADE,OnDelete:RESTRICT;"`
 }
@@ -47,7 +47,7 @@ func GetUserByGoogleID(id string) (User, error) {
 }
 
 // GetUserByID get user by id
-func GetUserByID(id uint) (User, error) {
+func GetUserByID(id SQLBasePK) (User, error) {
 	var user User
 
 	result := db.First(&user, id)

@@ -10,7 +10,6 @@ import (
 
 	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"
-	"go.uber.org/zap"
 	"google.golang.org/api/idtoken"
 )
 
@@ -21,18 +20,8 @@ var googleClientID string
 
 var tokenValidator *idtoken.Validator
 var validate *validator.Validate
-var sugar *zap.SugaredLogger
 
 var timeOffset time.Duration
-
-// Logger is a global logger
-var Logger *zap.Logger
-
-const (
-	infoMsgLevel = "info"
-	warnMsgLevel = "warn"
-	errMsgLevel  = "error"
-)
 
 // ErrorResponse is a struct for error response
 type ErrorResponse struct {
@@ -40,7 +29,10 @@ type ErrorResponse struct {
 	Tag   string
 }
 
-type msgStruct map[string]string
+type msgStruct struct {
+	Level string
+	Msg   string
+}
 
 func init() {
 	var err error
@@ -49,12 +41,6 @@ func init() {
 	if err != nil {
 		panic(err)
 	}
-	if mode.Mode() == mode.ReleaseMode {
-		Logger, _ = zap.NewProduction()
-	} else if mode.Mode() == mode.DebugMode {
-		Logger, _ = zap.NewDevelopment()
-	}
-	sugar = Logger.Sugar()
 
 	time.LoadLocation(os.Getenv("TIMEZONE"))
 	baseURL = os.Getenv("BASE_URL")
@@ -64,6 +50,7 @@ func init() {
 	validate = validator.New()
 	_, tmp := time.Now().Zone()
 	timeOffset = -1 * time.Duration(tmp) * time.Second
+	initLogger()
 }
 
 func setCookie(name string, value string, session bool, expires time.Time) *fiber.Cookie {
@@ -87,8 +74,8 @@ func setCookie(name string, value string, session bool, expires time.Time) *fibe
 
 func createMsg(level string, msg string) msgStruct {
 	return msgStruct{
-		"level": level,
-		"msg":   msg,
+		Level: level,
+		Msg:   msg,
 	}
 }
 

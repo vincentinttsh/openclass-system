@@ -12,29 +12,25 @@ import (
 
 // CreateOpenClass create openclass class(POST, GET)
 func CreateOpenClass(c *fiber.Ctx) error {
-	var username interface{} = c.Locals("username")
-	var userID = uint(c.Locals("id").(float64))
+	var userID model.SQLBasePK = model.SQLBasePK(c.Locals("id").(float64))
 	var template string = "class/form"
 	var form baseClassStruct
-	var baseClass model.BaseClass
+	var course model.Course
 	var valid bool
 	var err error
 	var startTime time.Time
 	var endTime time.Time
-	var bind fiber.Map
+	var bind fiber.Map = c.Locals("bind").(fiber.Map)
 
 	form = baseClassStruct{
-		Date:      time.Now().Format("02/01/2006"),
-		StartTime: time.Now().Format("15:04 PM"),
-		EndTime:   time.Now().Add(time.Hour).Format("15:04 PM"),
+		Date:      time.Now().Format(dateFormat),
+		StartTime: time.Now().Format(pureTimeFormat),
+		EndTime:   time.Now().Add(time.Hour).Format(pureTimeFormat),
 	}
-	bind = fiber.Map{
-		"method":      "新增",
-		"permissions": "edit",
-		"username":    username,
-		"csrf_token":  c.Locals("csrf_token"),
-		"form":        form,
-	}
+	bind["method"] = "新增"
+	bind["permissions"] = "edit"
+	bind["csrf_token"] = c.Locals("csrf_token")
+	bind["form"] = form
 
 	if c.Method() == fiber.MethodGet {
 		return c.Status(fiber.StatusOK).Render(template, bind)
@@ -50,10 +46,7 @@ func CreateOpenClass(c *fiber.Ctx) error {
 	parseFormat := []string{dateFormat, timeFormat, timeFormat}
 	for i := 0; i < len(value); i++ {
 		if _, err = time.Parse(parseFormat[i], value[i]); err != nil {
-			bind["messages"] = []msgStruct{
-				createMsg(warnMsgLevel, parseKey[i]+formatErrorMsg),
-			}
-			return c.Status(fiber.StatusBadRequest).Render(template, bind)
+			badRequest(c, parseKey[i]+formatErrorMsg, template, &bind)
 		}
 	}
 	startTime, _ = time.Parse(timeFormat, form.Date+form.StartTime)
@@ -70,20 +63,17 @@ func CreateOpenClass(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).Render(template, bind)
 	}
 
-	baseClass = model.BaseClass{
-		Name:      form.Name,
-		Classroom: form.Classroom,
-		Start:     startTime.Local(),
-		End:       endTime.Local(),
-		TeacherID: userID,
+	course = model.Course{
+		Name:       form.Name,
+		Department: c.Locals("department").(string),
+		Classroom:  form.Classroom,
+		Start:      startTime.Local(),
+		End:        endTime.Local(),
+		UserID:     userID,
 	}
 
-	if err = baseClass.Create(); err != nil {
-		bind["messages"] = []msgStruct{
-			createMsg(errMsgLevel, serverErrorMsg),
-		}
-		sugar.Errorln(err)
-		return c.Status(fiber.StatusInternalServerError).Render(template, bind)
+	if err = course.Create(); err != nil {
+		return dbWriteError(c, err, template, &bind)
 	}
 
 	return c.Redirect("/?status=create_success")
@@ -91,17 +81,14 @@ func CreateOpenClass(c *fiber.Ctx) error {
 
 // ListUserOpenClass list user openclass class(GET)
 func ListUserOpenClass(c *fiber.Ctx) error {
-	var username interface{} = c.Locals("username")
-	var userID = uint(c.Locals("id").(float64))
+	var userID = model.SQLBasePK(c.Locals("id").(float64))
 	var template string = "class/list"
-	var data []model.BaseClass
-	var classes []classBind
+	var data []model.Course
+	var courses []courseBind
 	var err error
-	var bind fiber.Map = fiber.Map{
-		"username": username,
-	}
+	var bind fiber.Map = c.Locals("bind").(fiber.Map)
 
-	err = model.GetUserClass(userID, &data)
+	err = model.GetUserCourses(userID, &data)
 	if err != nil {
 		sugar.Errorw("Get all class error", "error", err)
 		bind["messages"] = []msgStruct{
@@ -110,36 +97,36 @@ func ListUserOpenClass(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).Render(template, bind)
 	}
 
-	classes = make([]classBind, len(data))
+	courses = make([]courseBind, len(data))
 	var calendar string = "http://www.google.com/calendar/event?action=TEMPLATE&text=%s公開授課（"
 	calendar += "%s)&dates=%s/%s&details=課程名稱：%s"
 	for i, v := range data {
-		classes[i] = classBind{
+		courses[i] = courseBind{
 			ClassID:   v.ID,
 			ClassName: v.Name,
 			Date:      v.Start.Format("2006年01月02日"),
 			Passwd:    v.AttendPassword,
 			Calendar: fmt.Sprintf(calendar,
-				departmentChoice[v.Teacher.Department],
-				v.Teacher.Name,
+				departmentChoice[v.User.Department],
+				v.User.Name,
 				v.Start.Format("20060102T150405"),
 				v.End.Format("20060102T150405"),
 				v.Name,
-			) + "%0A" + fmt.Sprintf("授課老師：%s&location=%s&trp=false", v.Teacher.Name, v.Classroom),
+			) + "%0A" + fmt.Sprintf("授課老師：%s&location=%s&trp=false", v.User.Name, v.Classroom),
 		}
 	}
 
-	bind["classes"] = &classes
+	bind["courses"] = &courses
 
 	return c.Status(fiber.StatusOK).Render(template, bind)
 }
 
 // GetOfModifyOpenClass openclass class(GET, POST)
 func GetOfModifyOpenClass(c *fiber.Ctx) error {
-	var username interface{} = c.Locals("username")
-	var classID uint64 = 0
+	var classID model.SQLBasePK = 0
+	var id uint64
 	var template string = "class/form"
-	var data model.BaseClass
+	var data model.Course
 	var bind fiber.Map
 	var form baseClassStruct
 	var valid bool
@@ -147,38 +134,30 @@ func GetOfModifyOpenClass(c *fiber.Ctx) error {
 	var endTime time.Time
 	var err error
 
-	if classID, err = strconv.ParseUint(c.Params("id"), 10, 64); err != nil {
-		return c.Status(fiber.StatusNotFound).Render("error/404", fiber.Map{})
+	if id, err = strconv.ParseUint(c.Params("id"), 10, 64); err != nil {
+		return notFound(c)
 	}
-	bind = fiber.Map{
-		"method":      "修改",
-		"permissions": "edit",
-		"username":    username,
-		"csrf_token":  c.Locals("csrf_token"),
-	}
+	classID = model.SQLBasePK(id)
+	bind = c.Locals("bind").(fiber.Map)
+	bind["method"] = "修改"
+	bind["permissions"] = "edit"
+	bind["csrf_token"] = c.Locals("csrf_token")
 
-	err = model.GetClass(classID, &data)
+	err = model.GetCourse(classID, &data, false)
 	if err == gorm.ErrRecordNotFound {
-		return c.Status(fiber.StatusNotFound).Render("error/404", fiber.Map{
-			"status": fiber.StatusNotFound,
-			"title":  "找不到頁面",
-		})
+		return notFound(c)
 	}
 	if err != nil {
-		sugar.Errorw("Get class error", "error", err)
-		bind["messages"] = []msgStruct{
-			createMsg(errMsgLevel, getDBdataErrorMsg),
-		}
-		return c.Status(fiber.StatusInternalServerError).Render(template, bind)
+		return dbReadError(c, err, template, &bind)
 	}
 
 	if c.Method() == "GET" {
 		form = baseClassStruct{
 			Name:      data.Name,
 			Classroom: data.Classroom,
-			Date:      data.Start.Format("02/01/2006"),
-			StartTime: data.Start.Format("03:04 PM"),
-			EndTime:   data.End.Format("03:04 PM"),
+			Date:      data.Start.Format(dateFormat),
+			StartTime: data.Start.Format(pureTimeFormat),
+			EndTime:   data.End.Format(pureTimeFormat),
 		}
 		bind["form"] = form
 

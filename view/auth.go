@@ -35,12 +35,6 @@ func signJWT(user model.User) (t string, expire time.Time, err error) {
 
 // Login is a function that authenticate user
 func Login(c *fiber.Ctx) error {
-	csrfCookie := c.Cookies("g_csrf_token")
-	csrfBody := c.FormValue("g_csrf_token")
-	if csrfCookie == "" || csrfCookie != csrfBody {
-		return c.Status(fiber.StatusUnauthorized).SendString("CSRF token mismatch")
-	}
-
 	var err error
 	var token string
 	var payload *idtoken.Payload
@@ -48,6 +42,12 @@ func Login(c *fiber.Ctx) error {
 	var domain []string
 	var user model.User
 	var googleUser model.GoogleOauth
+
+	csrfCookie := c.Cookies("g_csrf_token")
+	csrfBody := c.FormValue("g_csrf_token")
+	if csrfCookie == "" || csrfCookie != csrfBody {
+		return c.Status(fiber.StatusUnauthorized).SendString("CSRF token mismatch")
+	}
 
 	token = c.FormValue("credential")
 	payload, err = tokenValidator.Validate(context.Background(), token, googleClientID)
@@ -101,18 +101,15 @@ func Login(c *fiber.Ctx) error {
 
 // Complete is a function that redirect user to next page
 func Complete(c *fiber.Ctx) error {
-	var username interface{} = c.Locals("username")
 	var template string = "auth/register"
 	var next *url.URL
 	var user model.User
 	var form registerUser
 	var err error
-	var bind fiber.Map = fiber.Map{
-		"username":          username,
-		"csrf_token":        c.Locals("csrf_token"),
-		"department_choice": departmentChoice,
-		"subject_choice":    subjectChoice,
-	}
+	var bind = c.Locals("bind").(fiber.Map)
+	bind["csrf_token"] = c.Locals("csrf_token")
+	bind["department_choice"] = departmentChoice
+	bind["subject_choice"] = subjectChoice
 
 	// Prevent open redirect vulnerability
 	// Next URL must be same host
@@ -121,7 +118,7 @@ func Complete(c *fiber.Ctx) error {
 		next = &url.URL{Path: baseURL}
 	}
 
-	user, err = model.GetUserByID(uint(c.Locals("id").(float64)))
+	user, err = model.GetUserByID(model.SQLBasePK(c.Locals("id").(float64)))
 	if err == gorm.ErrRecordNotFound {
 		c.Cookie(setCookie("token", "", false, time.Now()))
 		return c.RedirectBack("/")
@@ -151,7 +148,7 @@ func Logout(c *fiber.Ctx) error {
 
 // LoginPage is a function that render login page
 func LoginPage(c *fiber.Ctx) error {
-	var bind fiber.Map = fiber.Map{}
+	var bind fiber.Map = c.Locals("bind").(fiber.Map)
 	var status string = c.Query("status", "")
 
 	if c.Locals("id") != nil {

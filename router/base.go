@@ -39,7 +39,6 @@ func SetupRouter(app *fiber.App) {
 	app.Post("/auth/callback/:provider", view.Login)
 
 	app.Use(jwtVerify())
-	app.Get("/metrics", monitor.New(monitor.Config{Title: "MyService Metrics Page"}))
 	app.Get("/login", view.LoginPage)
 	app.Get("/logout", view.Logout)
 	app.Get("/", view.HomePage)
@@ -57,10 +56,13 @@ func SetupRouter(app *fiber.App) {
 	needRegisteredPath.Post("/class/create", view.CreateOpenClass)
 	needRegisteredPath.Get("/class/:id", view.GetOfModifyOpenClass)
 	needRegisteredPath.Post("/class/:id", view.GetOfModifyOpenClass)
+	needRegisteredPath.Get("/class/:id/design", view.GetCourseDesign)
+	needRegisteredPath.Post("/class/:id/design", view.GetCourseDesign)
 
 	// need registered  (without CSRF)
 	needRegisteredPath = needLoginPath.Group("", needRegistered())
 	needRegisteredPath.Get("/my/class", view.ListUserOpenClass)
+	app.Get("/metrics", monitor.New(monitor.Config{Title: "MyService Metrics Page"}))
 	app.Use(func(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusNotFound).Render("error/404", fiber.Map{
 			"status": fiber.StatusNotFound,

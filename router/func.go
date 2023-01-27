@@ -10,6 +10,7 @@ func jwtVerify() fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		var tokenString string
 		tokenString = c.Cookies("token", "")
+		c.Locals("bind", fiber.Map{})
 		if tokenString == "" {
 			return c.Next()
 		}
@@ -23,6 +24,11 @@ func jwtVerify() fiber.Handler {
 		c.Locals("id", claims["id"])
 		c.Locals("subject", claims["subject"])
 		c.Locals("department", claims["department"])
+		c.Locals("bind", fiber.Map{
+			"super_admin": claims["super_admin"],
+			"admin":       claims["admin"],
+			"username":    claims["name"],
+		})
 
 		return c.Next()
 	}
