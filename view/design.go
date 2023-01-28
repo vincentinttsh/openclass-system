@@ -16,6 +16,7 @@ func createDesignSH(c *fiber.Ctx) error {
 	var courseData model.Course
 	var form model.SHDesign
 	var bind fiber.Map = c.Locals("bind").(fiber.Map)
+	var oldDetails []model.SHDesignDetail
 	var err error
 
 	bind["method"] = "儲存"
@@ -27,7 +28,7 @@ func createDesignSH(c *fiber.Ctx) error {
 	}
 	classID = model.SQLBasePK(id)
 
-	err = model.GetCourse(classID, &courseData, true)
+	err = model.GetCourse(&classID, &courseData, true)
 	switch err {
 	case gorm.ErrRecordNotFound:
 		return notFound(c)
@@ -38,7 +39,7 @@ func createDesignSH(c *fiber.Ctx) error {
 	}
 
 	// 取得高中課程教學活動設計表, 若不存在則填入課程資料
-	form, err = model.GetSHDesignByCourseID(classID)
+	err = model.GetSHDesignByCourseID(&classID, &form)
 	switch err {
 	case gorm.ErrRecordNotFound:
 		form.Course = courseData
@@ -60,7 +61,11 @@ func createDesignSH(c *fiber.Ctx) error {
 		return c.Render(template, bind)
 	}
 
+	oldDetails = form.Details
+	form.Details = make([]model.SHDesignDetail, 0)
+
 	c.BodyParser(&form)
+	// 處理時間
 	if form.Date != "" {
 		if _, err = time.Parse(dateFormat, form.Date); err != nil {
 			return badRequest(c, "日期"+formatErrorMsg, template, &bind)
@@ -84,14 +89,28 @@ func createDesignSH(c *fiber.Ctx) error {
 		}
 	}
 
-	if form.ID == 0 {
-		err = form.Create()
-	} else {
-		err = form.Update()
-	}
+	err = form.Update()
 	if err != nil {
 		return dbWriteError(c, err, template, &bind)
 	}
+
+	for i := range form.Details {
+		if i < len(oldDetails) {
+			form.Details[i].ID = oldDetails[i].ID
+		}
+		form.Details[i].SHDesignID = form.ID
+		err = form.Details[i].Update()
+		if err != nil {
+			return dbWriteError(c, err, template, &bind)
+		}
+	}
+	for i := len(form.Details); i < len(oldDetails); i++ {
+		err = oldDetails[i].Delete()
+		if err != nil {
+			return dbWriteError(c, err, template, &bind)
+		}
+	}
+
 	bind["messages"] = []msgStruct{
 		createMsg(infoMsgLevel, "儲存成功"),
 	}

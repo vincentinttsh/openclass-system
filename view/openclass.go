@@ -88,7 +88,7 @@ func ListUserOpenClass(c *fiber.Ctx) error {
 	var err error
 	var bind fiber.Map = c.Locals("bind").(fiber.Map)
 
-	err = model.GetUserCourses(userID, &data)
+	err = model.GetUserCourses(&userID, &data)
 	if err != nil {
 		sugar.Errorw("Get all class error", "error", err)
 		bind["messages"] = []msgStruct{
@@ -143,7 +143,7 @@ func GetOfModifyOpenClass(c *fiber.Ctx) error {
 	bind["permissions"] = "edit"
 	bind["csrf_token"] = c.Locals("csrf_token")
 
-	err = model.GetCourse(classID, &data, false)
+	err = model.GetCourse(&classID, &data, false)
 	if err == gorm.ErrRecordNotFound {
 		return notFound(c)
 	}

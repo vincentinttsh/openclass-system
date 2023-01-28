@@ -23,9 +23,9 @@ type User struct {
 // GoogleOauth google oauth map to user model
 type GoogleOauth struct {
 	BaseModel
-	ID     string `gorm:"not null;primaryKey"`
-	UserID string `gorm:"not null;index"`
-	User   User   `gorm:"constraint:OnUpdate:CASCADE,OnDelete:RESTRICT;"`
+	ID     string    `gorm:"not null;primaryKey"`
+	UserID SQLBasePK `gorm:"not null;index"`
+	User   User      `gorm:"constraint:OnUpdate:CASCADE,OnDelete:RESTRICT;"`
 }
 
 // Organization organization model (usually a school)
@@ -57,7 +57,7 @@ func GetUserByID(id SQLBasePK) (User, error) {
 
 // CreateUserFromGoogle create user from google oauth
 func CreateUserFromGoogle(googleOauth2User *GoogleOauth) error {
-	result := db.Create(&googleOauth2User)
+	result := db.Create(googleOauth2User)
 
 	return result.Error
 }

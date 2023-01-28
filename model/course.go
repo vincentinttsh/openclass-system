@@ -28,7 +28,7 @@ func (object *Course) BeforeCreate(tx *gorm.DB) (err error) {
 
 // Create create a class
 func (object *Course) Create() error {
-	result := db.Create(&object)
+	result := db.Create(object)
 
 	return result.Error
 }
@@ -43,26 +43,26 @@ func (object *Course) Update() error {
 // GetAllCourses get all class
 func GetAllCourses(courses *[]Course) error {
 	result := db.Model(Course{}).Joins("User").
-		Where("start > ?", time.Now()).Order("start").Find(&courses)
+		Where("start > ?", time.Now()).Order("start").Find(courses)
 
 	return result.Error
 }
 
 // GetUserCourses get all class of single user
-func GetUserCourses(userID SQLBasePK, courses *[]Course) error {
+func GetUserCourses(userID *SQLBasePK, courses *[]Course) error {
 	result := db.Model(Course{}).Joins("User").
-		Where(&Course{UserID: userID}).Order("`courses`.`id` DESC").Find(&courses)
+		Where(&Course{UserID: *userID}).Order("`courses`.`id` DESC").Find(courses)
 
 	return result.Error
 }
 
 // GetCourse get a class
-func GetCourse(classID SQLBasePK, class *Course, prefetch bool) error {
+func GetCourse(classID *SQLBasePK, class *Course, prefetch bool) error {
 	var result *gorm.DB
 	if prefetch {
-		result = db.Model(Course{}).Joins("User").First(&class, classID)
+		result = db.Model(Course{}).Joins("User").First(class, classID)
 	} else {
-		result = db.First(&class, classID)
+		result = db.First(class, classID)
 	}
 
 	return result.Error
