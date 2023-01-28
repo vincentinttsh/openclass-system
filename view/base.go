@@ -5,6 +5,7 @@ import (
 	"os"
 	"reflect"
 	"time"
+	"vincentinttsh/openclass-system/model"
 	"vincentinttsh/openclass-system/pkg/mode"
 	"vincentinttsh/openclass-system/pkg/tool"
 
@@ -137,4 +138,43 @@ func formErrorHandler(er *ErrorResponse, form interface{}) string {
 	}
 	tool.Print(msg)
 	return msg
+}
+
+type baseTimeStruct interface {
+	model.SHPreparation | model.SHDesign
+}
+
+func dynamicTimeCheck(
+	c *fiber.Ctx, form model.DurationBaseInterface, template string, bind *fiber.Map,
+) (bool, error) {
+	date, startTime, endTime := form.GetTimeString()
+	var start time.Time
+	var end time.Time
+
+	var err error
+	if date != "" {
+		if _, err = time.Parse(dateFormat, date); err != nil {
+			return false, badRequest(c, "日期"+formatErrorMsg, template, bind)
+		}
+		if startTime != "" {
+			start, err = time.Parse(timeFormat, date+startTime)
+			if err != nil {
+				return false, badRequest(c, "開始時間"+formatErrorMsg, template, bind)
+			}
+			start = start.Add(timeOffset).Local()
+			form.SetStartTime(start)
+		}
+		if endTime != "" {
+			end, err = time.Parse(timeFormat, date+endTime)
+			if err != nil {
+				return false, badRequest(c, "結束時間"+formatErrorMsg, template, bind)
+			}
+			end = end.Add(timeOffset).Local()
+			form.SetEndTime(end)
+		}
+		if startTime != "" && endTime != "" && end.Before(start) {
+			return false, badRequest(c, "結束時間不得早於開始時間", template, bind)
+		}
+	}
+	return true, nil
 }

@@ -58,6 +58,7 @@ func init() {
 	panicAtError(db.AutoMigrate(&Course{}))
 	panicAtError(db.AutoMigrate(&SHDesignDetail{}))
 	panicAtError(db.AutoMigrate(&SHDesign{}))
+	panicAtError(db.AutoMigrate(&SHPreparation{}))
 }
 
 func panicAtError(err error) {
@@ -72,4 +73,20 @@ type BaseModel struct {
 	UpdatedAt time.Time
 	DeletedAt gorm.DeletedAt `gorm:"index"`
 	ID        SQLBasePK      `gorm:"not null;autoIncrement;primaryKey"`
+}
+
+// DurationBaseModel base model for duration
+type DurationBaseModel struct {
+	Start     time.Time `gorm:"type:date"`
+	End       time.Time `gorm:"type:date check (\"end\" > \"start\")"`
+	Date      string    `gorm:"-:all" form:"date" i18n:"教學日期"`
+	StartTime string    `gorm:"-:all" form:"startTime" i18n:"教學開始時間"`
+	EndTime   string    `gorm:"-:all" form:"endTime" i18n:"教學結束時間"`
+}
+
+// DurationBaseInterface duration base interface
+type DurationBaseInterface interface {
+	GetTimeString() (string, string, string)
+	SetStartTime(time.Time)
+	SetEndTime(time.Time)
 }

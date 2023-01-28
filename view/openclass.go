@@ -87,6 +87,7 @@ func ListUserOpenClass(c *fiber.Ctx) error {
 	var courses []courseBind
 	var err error
 	var bind fiber.Map = c.Locals("bind").(fiber.Map)
+	bind["baseURL"] = baseURL
 
 	err = model.GetUserCourses(&userID, &data)
 	if err != nil {

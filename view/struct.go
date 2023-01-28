@@ -20,7 +20,7 @@ var subjectChoice = map[string]string{
 }
 
 type baseClassStruct struct {
-	Name      string `form:"className" validate:"required" i18n:"課程名稱"`
+	Name      string `form:"name" validate:"required" i18n:"課程名稱"`
 	Classroom string `form:"classroom" validate:"required" i18n:"上課教室"`
 	Date      string `form:"date" validate:"required" i18n:"上課日期"`
 	StartTime string `form:"startTime" validate:"required" i18n:"開始時間"`

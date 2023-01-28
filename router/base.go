@@ -56,8 +56,10 @@ func SetupRouter(app *fiber.App) {
 	needRegisteredPath.Post("/class/create", view.CreateOpenClass)
 	needRegisteredPath.Get("/class/:id", view.GetOfModifyOpenClass)
 	needRegisteredPath.Post("/class/:id", view.GetOfModifyOpenClass)
-	needRegisteredPath.Get("/class/:id/design", view.GetCourseDesign)
-	needRegisteredPath.Post("/class/:id/design", view.GetCourseDesign)
+	needRegisteredPath.Get("/class/:id/design", view.CourseDesign)
+	needRegisteredPath.Post("/class/:id/design", view.CourseDesign)
+	needRegisteredPath.Get("/class/:id/preparation", view.CoursePreparation)
+	needRegisteredPath.Post("/class/:id/preparation", view.CoursePreparation)
 
 	// need registered  (without CSRF)
 	needRegisteredPath = needLoginPath.Group("", needRegistered())
