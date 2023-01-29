@@ -26,34 +26,21 @@ func (object *Course) BeforeCreate(tx *gorm.DB) (err error) {
 	return
 }
 
-// Create create a class
-func (object *Course) Create() error {
-	result := db.Create(object)
-
-	return result.Error
-}
-
-// Update update a class
-func (object *Course) Update() error {
-	result := db.Save(&object)
-
-	return result.Error
+// Save save a class
+func (object *Course) Save() error {
+	return db.Save(&object).Error
 }
 
 // GetAllCourses get all class
 func GetAllCourses(courses *[]Course) error {
-	result := db.Model(Course{}).Joins("User").
-		Where("start > ?", time.Now()).Order("start").Find(courses)
-
-	return result.Error
+	return db.Model(Course{}).Joins("User").
+		Where("start > ?", time.Now()).Order("start").Find(courses).Error
 }
 
 // GetUserCourses get all class of single user
 func GetUserCourses(userID *SQLBasePK, courses *[]Course) error {
-	result := db.Model(Course{}).Joins("User").
-		Where(&Course{UserID: *userID}).Order("`courses`.`id` DESC").Find(courses)
-
-	return result.Error
+	return db.Model(Course{}).Joins("User").Where(
+		&Course{UserID: *userID}).Order("`courses`.`id` DESC").Find(courses).Error
 }
 
 // GetCourse get a class

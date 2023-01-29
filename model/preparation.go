@@ -46,9 +46,8 @@ func (object *SHPreparation) SetEndTime(t time.Time) {
 
 // GetSHPreparationByCourseID 依照課程編號取得共同備課記錄表
 func GetSHPreparationByCourseID(courseID *SQLBasePK, object *SHPreparation) error {
-	return db.Model(SHPreparation{}).Joins("Course").Preload("Course.User").Where(&SHPreparation{
-		CourseID: *courseID,
-	}).First(&object).Error
+	object.CourseID = *courseID
+	return db.Joins("Course").Preload("Course.User").First(&object).Error
 }
 
 // AfterFind is a hook to format the date and time

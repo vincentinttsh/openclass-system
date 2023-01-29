@@ -37,14 +37,15 @@ func init() {
 			Colorful:                  true,        // Disable color
 		},
 	)
-	if mode.Mode() == mode.DebugMode {
-		if os.Getenv("DB_LOG") == "true" {
-			config.Logger = config.Logger.LogMode(logger.Info)
-		}
+	if os.Getenv("DB_LOG") == "true" {
+		config.Logger = config.Logger.LogMode(logger.Info)
+	}
+	switch mode.Mode() {
+	case mode.DebugMode:
 		db, err = gorm.Open(sqlite.Open("dev.sqlite"), config)
-	} else if mode.Mode() == mode.ReleaseMode {
+	case mode.ReleaseMode:
 		db, err = gorm.Open(postgres.Open(os.Getenv("DB_URL")), config)
-	} else {
+	default:
 		db, err = gorm.Open(sqlite.Open("test.sqlite"), &gorm.Config{})
 	}
 

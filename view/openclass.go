@@ -72,7 +72,7 @@ func CreateOpenClass(c *fiber.Ctx) error {
 		UserID:     userID,
 	}
 
-	if err = course.Create(); err != nil {
+	if err = course.Save(); err != nil {
 		return dbWriteError(c, err, template, &bind)
 	}
 
@@ -200,7 +200,7 @@ func GetOfModifyOpenClass(c *fiber.Ctx) error {
 	data.Start = startTime.Local()
 	data.End = endTime.Local()
 
-	if err = data.Update(); err != nil {
+	if err = data.Save(); err != nil {
 		bind["messages"] = []msgStruct{
 			createMsg(errMsgLevel, serverErrorMsg),
 		}

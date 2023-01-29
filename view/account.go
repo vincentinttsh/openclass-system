@@ -15,11 +15,12 @@ func Register(c *fiber.Ctx) error {
 	var valid bool
 	var err error
 	var bind fiber.Map = c.Locals("bind").(fiber.Map)
+	var userID = model.SQLBasePK(c.Locals("id").(float64))
 	bind["department_choice"] = departmentChoice
 	bind["subject_choice"] = subjectChoice
 	bind["csrf_token"] = c.Locals("csrf_token")
 
-	user, err = model.GetUserByID(model.SQLBasePK(c.Locals("id").(float64)))
+	err = model.GetUserByID(&userID, &user)
 	if err != nil {
 		return c.Redirect("/login?status=notfound", fiber.StatusFound)
 	}

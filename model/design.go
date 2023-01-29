@@ -39,9 +39,7 @@ type SHDesignDetail struct {
 
 // Save 儲存高中課程教學活動設計表
 func (object *SHDesign) Save() error {
-	result := db.Save(object)
-
-	return result.Error
+	return db.Save(object).Error
 }
 
 // GetTimeString get 高中課程教學活動設計表的時間字串
@@ -61,34 +59,25 @@ func (object *SHDesign) SetEndTime(t time.Time) {
 
 // Save 儲存高中課程教學活動設計表的詳細資料
 func (object *SHDesignDetail) Save() error {
-	result := db.Save(object)
-
-	return result.Error
+	return db.Save(object).Error
 }
 
 // Delete delete a 高中課程教學活動設計表詳細資料
 func (object *SHDesignDetail) Delete() error {
-	result := db.Delete(object)
-
-	return result.Error
+	return db.Delete(object).Error
 }
 
 // GetSHDesignByCourseID 依照課程編號取得高中課程教學活動設計表
 func GetSHDesignByCourseID(courseID *SQLBasePK, object *SHDesign) error {
-	result := db.Model(SHDesign{}).Joins("Course").Preload("Course.User").Where(&SHDesign{
-		CourseID: *courseID,
-	}).First(&object)
-
-	return result.Error
+	object.CourseID = *courseID
+	return db.Model(SHDesign{}).Joins("Course").Preload("Course.User").First(&object).Error
 }
 
 // GetCourseDesignDetails 取得高中課程教學活動設計表的詳細資料
 func GetCourseDesignDetails(SHDesignID *SQLBasePK, objects *[]SHDesignDetail) error {
-	result := db.Where(&SHDesignDetail{
+	return db.Where(&SHDesignDetail{
 		SHDesignID: *SHDesignID,
-	}).Find(&objects).Order("id")
-
-	return result.Error
+	}).Find(&objects).Order("id").Error
 }
 
 // AfterFind is a hook to format the date and time

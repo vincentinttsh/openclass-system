@@ -42,6 +42,7 @@ func Login(c *fiber.Ctx) error {
 	var domain []string
 	var user model.User
 	var googleUser model.GoogleOauth
+	var googleUID string
 
 	csrfCookie := c.Cookies("g_csrf_token")
 	csrfBody := c.FormValue("g_csrf_token")
@@ -62,7 +63,8 @@ func Login(c *fiber.Ctx) error {
 
 	profile = payload.Claims
 	domain = strings.Split(profile["hd"].(string), ".")
-	user, err = model.GetUserByGoogleID(profile["sub"].(string))
+	googleUID = profile["sub"].(string)
+	user, err = model.GetUserByGoogleID(&googleUID)
 	if err == gorm.ErrRecordNotFound {
 		googleUser = model.GoogleOauth{
 			ID: profile["sub"].(string),
@@ -102,11 +104,12 @@ func Complete(c *fiber.Ctx) error {
 	var form registerUser
 	var err error
 	var bind = c.Locals("bind").(fiber.Map)
+	var userID = model.SQLBasePK(c.Locals("id").(float64))
 	bind["csrf_token"] = c.Locals("csrf_token")
 	bind["department_choice"] = departmentChoice
 	bind["subject_choice"] = subjectChoice
 
-	user, err = model.GetUserByID(model.SQLBasePK(c.Locals("id").(float64)))
+	err = model.GetUserByID(&userID, &user)
 	if err == gorm.ErrRecordNotFound {
 		c.Cookie(setCookie("token", "", false, time.Now()))
 		return c.RedirectBack("/")

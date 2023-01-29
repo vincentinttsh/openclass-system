@@ -27,7 +27,7 @@ type GoogleOauth struct {
 	CreatedAt time.Time
 	UpdatedAt time.Time
 	DeletedAt gorm.DeletedAt `gorm:"index"`
-	ID        string         `gorm:"not null;primaryKey"`
+	ID        string         `gorm:"primaryKey;not null"`
 	UserID    SQLBasePK      `gorm:"not null;index"`
 	User      User           `gorm:"constraint:OnUpdate:CASCADE,OnDelete:RESTRICT;"`
 }
@@ -42,44 +42,37 @@ type Organization struct {
 }
 
 // GetUserByGoogleID get user by google id
-func GetUserByGoogleID(id string) (User, error) {
+func GetUserByGoogleID(id *string) (User, error) {
 	var googleOauth2User GoogleOauth
+	googleOauth2User.ID = *id
 
-	result := db.Preload("User").Preload("User.Organization").First(&googleOauth2User, id)
+	result := db.Joins("User").Preload("User.Organization").First(&googleOauth2User)
 
 	return googleOauth2User.User, result.Error
 }
 
 // GetUserByID get user by id
-func GetUserByID(id SQLBasePK) (User, error) {
-	var user User
-
-	result := db.First(&user, id)
-
-	return user, result.Error
+func GetUserByID(id *SQLBasePK, user *User) error {
+	return db.First(user, id).Error
 }
 
 // CreateUserFromGoogle create user from google oauth
 func CreateUserFromGoogle(googleOauth2User *GoogleOauth) error {
-	result := db.Create(googleOauth2User)
-
-	return result.Error
+	return db.Create(googleOauth2User).Error
 }
 
 // UpdateUser update user
 func UpdateUser(user *User, value *User) error {
-	result := db.Model(user).Updates(value)
-
-	return result.Error
+	return db.Model(user).Updates(value).Error
 }
 
 // AfterCreate set user as super admin and admin when the user is first created
 func (u *User) AfterCreate(tx *gorm.DB) (err error) {
 	if u.ID == 1 {
-		tx.Model(u).Updates(User{
+		err = tx.Model(u).Updates(User{
 			Admin:      true,
 			SuperAdmin: true,
-		})
+		}).Error
 	}
 
 	return
