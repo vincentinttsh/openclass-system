@@ -12,9 +12,11 @@ import (
 )
 
 var signingKey []byte
+var baseURL string
 
 // SetupRouter is a function that sets up the router
 func SetupRouter(app *fiber.App) {
+	baseURL = os.Getenv("BASE_URL")
 	signingKey = []byte(os.Getenv("JWT_SECRET"))
 	csrfConfig := csrf.Config{
 		KeyLookup: "form:csrf_token",
@@ -39,32 +41,29 @@ func SetupRouter(app *fiber.App) {
 	app.Post("/auth/callback/:provider", view.Login)
 
 	app.Use(jwtVerify())
+	app.Use(csrf.New(csrfConfig))
 	app.Get("/login", view.LoginPage)
 	app.Get("/logout", view.Logout)
 	app.Get("/", view.HomePage)
 
 	// need login
-	needLoginPath := app.Group("", needLogin())
-	needCSRFPath := needLoginPath.Group("", csrf.New(csrfConfig))
-	needCSRFPath.Get("/auth/complete", view.Complete)
-	needCSRFPath.Get("/register", view.Register)
-	needCSRFPath.Post("/register", view.Register)
+	app.Get("/auth/complete", needLogin(), view.Complete)
+	app.Get("/register", needLogin(), view.Register)
+	app.Post("/register", needLogin(), view.Register)
 
 	// need registered (with CSRF)
-	needRegisteredPath := needCSRFPath.Group("", needRegistered())
-	needRegisteredPath.Get("/class/create", view.CreateOpenClass)
-	needRegisteredPath.Post("/class/create", view.CreateOpenClass)
-	needRegisteredPath.Get("/class/:id", view.GetOfModifyOpenClass)
-	needRegisteredPath.Post("/class/:id", view.GetOfModifyOpenClass)
-	needRegisteredPath.Get("/class/:id/design", view.CourseDesign)
-	needRegisteredPath.Post("/class/:id/design", view.CourseDesign)
-	needRegisteredPath.Get("/class/:id/preparation", view.CoursePreparation)
-	needRegisteredPath.Post("/class/:id/preparation", view.CoursePreparation)
+	app.Get("/class/create", needRegistered(), view.CreateOpenClass)
+	app.Post("/class/create", needRegistered(), view.CreateOpenClass)
+	app.Get("/class/:id", needRegistered(), view.GetOfModifyOpenClass)
+	app.Post("/class/:id", needRegistered(), view.GetOfModifyOpenClass)
+	app.Get("/class/:id/design", needRegistered(), view.CourseDesign)
+	app.Post("/class/:id/design", needRegistered(), view.CourseDesign)
+	app.Get("/class/:id/preparation", needRegistered(), view.CoursePreparation)
+	app.Post("/class/:id/preparation", needRegistered(), view.CoursePreparation)
 
 	// need registered  (without CSRF)
-	needRegisteredPath = needLoginPath.Group("", needRegistered())
-	needRegisteredPath.Get("/my/class", view.ListUserOpenClass)
-	app.Get("/metrics", monitor.New(monitor.Config{Title: "MyService Metrics Page"}))
+	app.Get("/my/class", needRegistered(), view.ListUserOpenClass)
+	app.Get("/metrics", needSuperAdmin(), monitor.New(monitor.Config{Title: "MyService Metrics Page"}))
 	app.Use(func(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusNotFound).Render("error/404", fiber.Map{
 			"status": fiber.StatusNotFound,

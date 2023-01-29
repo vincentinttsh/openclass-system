@@ -91,18 +91,13 @@ func Login(c *fiber.Ctx) error {
 	}
 
 	c.Cookie(setCookie("token", token, false, expire))
-
-	if user.Subject != "" && user.Department != "" {
-		return c.Redirect("/?status=login")
-	}
-
 	return c.Redirect("/auth/complete")
 }
 
 // Complete is a function that redirect user to next page
 func Complete(c *fiber.Ctx) error {
-	var template string = "auth/register"
 	var next *url.URL
+	var template string = "auth/register"
 	var user model.User
 	var form registerUser
 	var err error
@@ -110,13 +105,6 @@ func Complete(c *fiber.Ctx) error {
 	bind["csrf_token"] = c.Locals("csrf_token")
 	bind["department_choice"] = departmentChoice
 	bind["subject_choice"] = subjectChoice
-
-	// Prevent open redirect vulnerability
-	// Next URL must be same host
-	next, err = url.ParseRequestURI(c.Cookies("redirect", baseURL))
-	if err != nil || next.Host != c.Hostname() {
-		next = &url.URL{Path: baseURL}
-	}
 
 	user, err = model.GetUserByID(model.SQLBasePK(c.Locals("id").(float64)))
 	if err == gorm.ErrRecordNotFound {
@@ -130,14 +118,22 @@ func Complete(c *fiber.Ctx) error {
 		}
 		return c.Status(fiber.StatusInternalServerError).Render(template, bind)
 	}
-
-	form.Username = user.Name
-	form.Email = user.Email
-	bind["form"] = form
-	bind["messages"] = []msgStruct{
-		createMsg(infoMsgLevel, "請填寫以下資料，以完成註冊"),
+	if user.Subject == "" || user.Department == "" {
+		form.Username = user.Name
+		form.Email = user.Email
+		bind["form"] = form
+		bind["messages"] = []msgStruct{
+			createMsg(infoMsgLevel, "請填寫以下資料，以完成註冊"),
+		}
+		return c.Status(fiber.StatusOK).Render(template, bind)
 	}
-	return c.Status(fiber.StatusOK).Render(template, bind)
+	// Prevent open redirect vulnerability
+	// Next URL must be same host
+	next, err = url.ParseRequestURI(c.Cookies("redirect", ""))
+	if err != nil || next.Scheme+"://"+next.Host != baseURL {
+		return c.Redirect("/?status=login")
+	}
+	return c.Redirect(next.String())
 }
 
 // Logout is a function that logout user
@@ -150,10 +146,12 @@ func Logout(c *fiber.Ctx) error {
 func LoginPage(c *fiber.Ctx) error {
 	var bind fiber.Map = c.Locals("bind").(fiber.Map)
 	var status string = c.Query("status", "")
+	var next = c.Query("next", baseURL)
 
 	if c.Locals("id") != nil {
 		return c.Redirect("/")
 	}
+	c.Cookie(setCookie("redirect", next, true, time.Now()))
 
 	if status == "notfound" {
 		bind["messages"] = []msgStruct{

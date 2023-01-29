@@ -20,7 +20,6 @@ func jwtVerify() fiber.Handler {
 			return c.Next()
 		}
 
-		c.Locals("username", claims["name"])
 		c.Locals("id", claims["id"])
 		c.Locals("subject", claims["subject"])
 		c.Locals("department", claims["department"])
@@ -36,8 +35,9 @@ func jwtVerify() fiber.Handler {
 
 func needLogin() fiber.Handler {
 	return func(c *fiber.Ctx) error {
+		next := baseURL + c.OriginalURL()
 		if c.Locals("id") == nil {
-			return c.Redirect("/login?status=notfound", fiber.StatusFound)
+			return c.Redirect("/login?status=notfound&next=" + next)
 		}
 
 		return c.Next()
@@ -46,8 +46,29 @@ func needLogin() fiber.Handler {
 
 func needRegistered() fiber.Handler {
 	return func(c *fiber.Ctx) error {
+		next := baseURL + c.OriginalURL()
+		if c.Locals("id") == nil {
+			return c.Redirect("/login?status=notfound&next=" + next)
+		}
 		if c.Locals("subject") == "" || c.Locals("department") == "" {
-			return c.Redirect("/auth/complete", fiber.StatusFound)
+			return c.Redirect("/auth/complete")
+		}
+
+		return c.Next()
+	}
+}
+
+func needSuperAdmin() fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		next := baseURL + c.OriginalURL()
+		if c.Locals("id") == nil {
+			return c.Redirect("/login?status=notfound&next=" + next)
+		}
+		if c.Locals("subject") == "" || c.Locals("department") == "" {
+			return c.Redirect("/auth/complete")
+		}
+		if c.Locals("bind").(fiber.Map)["super_admin"] != true {
+			return c.Redirect("/?status=permission")
 		}
 
 		return c.Next()

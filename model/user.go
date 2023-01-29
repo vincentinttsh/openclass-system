@@ -1,6 +1,8 @@
 package model
 
 import (
+	"time"
+
 	"gorm.io/gorm"
 )
 
@@ -22,10 +24,12 @@ type User struct {
 
 // GoogleOauth google oauth map to user model
 type GoogleOauth struct {
-	BaseModel
-	ID     string    `gorm:"not null;primaryKey"`
-	UserID SQLBasePK `gorm:"not null;index"`
-	User   User      `gorm:"constraint:OnUpdate:CASCADE,OnDelete:RESTRICT;"`
+	CreatedAt time.Time
+	UpdatedAt time.Time
+	DeletedAt gorm.DeletedAt `gorm:"index"`
+	ID        string         `gorm:"not null;primaryKey"`
+	UserID    SQLBasePK      `gorm:"not null;index"`
+	User      User           `gorm:"constraint:OnUpdate:CASCADE,OnDelete:RESTRICT;"`
 }
 
 // Organization organization model (usually a school)
