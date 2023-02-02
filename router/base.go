@@ -2,7 +2,7 @@ package router
 
 import (
 	"os"
-	"vincentinttsh/openclass-system/pkg/mode"
+	"vincentinttsh/openclass-system/internal/mode"
 	"vincentinttsh/openclass-system/view"
 
 	"github.com/gofiber/fiber/v2"
@@ -42,12 +42,12 @@ func SetupRouter(app *fiber.App) {
 
 	app.Use(jwtVerify())
 	app.Use(csrf.New(csrfConfig))
-	app.Get("/login", view.LoginPage)
+	app.Get("/login", view.LoginPage).Name("login")
 	app.Get("/logout", view.Logout)
-	app.Get("/", view.HomePage)
+	app.Get("/", view.HomePage).Name("home")
 
 	// need login
-	app.Get("/auth/complete", needLogin(), view.Complete)
+	app.Get("/auth/complete", needLogin(), view.Complete).Name("authComplete")
 	app.Get("/register", needLogin(), view.Register)
 	app.Post("/register", needLogin(), view.Register)
 
@@ -62,7 +62,10 @@ func SetupRouter(app *fiber.App) {
 	app.Post("/class/:id/preparation", needRegistered(), view.CoursePreparation)
 
 	// need registered  (without CSRF)
-	app.Get("/my/class", needRegistered(), view.ListUserOpenClass)
+	app.Get("/class/:id/participation", needRegistered(), view.AttendClass)
+	app.Get("/class/:id/reservation", needRegistered(), view.ReserveClass)
+	app.Get("/my/class", needRegistered(), view.ListUserOpenClass).Name("my_class")
+	app.Get("/my/observation", needRegistered(), view.ListUserObservation).Name("my_observation")
 	app.Get("/metrics", needSuperAdmin(), monitor.New(monitor.Config{Title: "MyService Metrics Page"}))
 	app.Use(func(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusNotFound).Render("error/404", fiber.Map{

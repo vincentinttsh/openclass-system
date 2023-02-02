@@ -4,7 +4,7 @@ import (
 	"log"
 	"os"
 	"time"
-	"vincentinttsh/openclass-system/pkg/mode"
+	"vincentinttsh/openclass-system/internal/mode"
 
 	"gorm.io/driver/postgres"
 	"gorm.io/driver/sqlite"
@@ -31,22 +31,27 @@ func init() {
 	config.Logger = logger.New(
 		log.New(os.Stdout, "\r\n", log.LstdFlags), // io writer
 		logger.Config{
-			SlowThreshold:             time.Second, // Slow SQL threshold
-			LogLevel:                  logger.Warn, // Log level
-			IgnoreRecordNotFoundError: true,        // Ignore ErrRecordNotFound error for logger
-			Colorful:                  true,        // Disable color
+			SlowThreshold:             time.Second,   // Slow SQL threshold
+			LogLevel:                  logger.Silent, // Log level
+			IgnoreRecordNotFoundError: true,          // Ignore ErrRecordNotFound error for logger
+			Colorful:                  true,          // Disable color
 		},
 	)
-	if os.Getenv("DB_LOG") == "true" {
-		config.Logger = config.Logger.LogMode(logger.Info)
-	}
 	switch mode.Mode() {
 	case mode.DebugMode:
+		if os.Getenv("DB_LOG") == "true" {
+			config.Logger = config.Logger.LogMode(logger.Info)
+		} else {
+			config.Logger = config.Logger.LogMode(logger.Warn)
+		}
 		db, err = gorm.Open(sqlite.Open("dev.sqlite"), config)
 	case mode.ReleaseMode:
+		if os.Getenv("DB_LOG") == "true" {
+			config.Logger = config.Logger.LogMode(logger.Info)
+		}
 		db, err = gorm.Open(postgres.Open(os.Getenv("DB_URL")), config)
 	default:
-		db, err = gorm.Open(sqlite.Open("test.sqlite"), &gorm.Config{})
+		db, err = gorm.Open(sqlite.Open("test.sqlite"), config)
 	}
 
 	if err != nil {
@@ -57,6 +62,7 @@ func init() {
 	panicAtError(db.AutoMigrate(&User{}))
 	panicAtError(db.AutoMigrate(&GoogleOauth{}))
 	panicAtError(db.AutoMigrate(&Course{}))
+	panicAtError(db.AutoMigrate(&CourseReservation{}))
 	panicAtError(db.AutoMigrate(&SHDesignDetail{}))
 	panicAtError(db.AutoMigrate(&SHDesign{}))
 	panicAtError(db.AutoMigrate(&SHPreparation{}))

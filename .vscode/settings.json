@@ -7,13 +7,17 @@
         "gorm",
         "gtcsfield",
         "idtoken",
+        "Infof",
+        "Infow",
         "joho",
         "jwtware",
         "markbates",
         "oneof",
         "openclass",
         "Prefork",
-        "TTSH"
+        "TTSH",
+        "Warnf",
+        "Warnln"
     ],
     "sonarlint.connectedMode.project": {
         "connectionId": "vincentinttsh",

@@ -5,9 +5,8 @@ import (
 	"os"
 	"reflect"
 	"time"
+	"vincentinttsh/openclass-system/internal/mode"
 	"vincentinttsh/openclass-system/model"
-	"vincentinttsh/openclass-system/pkg/mode"
-	"vincentinttsh/openclass-system/pkg/tool"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"
@@ -23,6 +22,8 @@ var tokenValidator *idtoken.Validator
 var validate *validator.Validate
 
 var timeOffset time.Duration
+var allowTimeOffset time.Duration
+var statusBind map[string]string
 
 // ErrorResponse is a struct for error response
 type ErrorResponse struct {
@@ -31,8 +32,9 @@ type ErrorResponse struct {
 }
 
 type msgStruct struct {
-	Level string
-	Msg   string
+	Level  string
+	Msg    string
+	Detail string
 }
 
 func init() {
@@ -51,7 +53,9 @@ func init() {
 	validate = validator.New()
 	_, tmp := time.Now().Zone()
 	timeOffset = -1 * time.Duration(tmp) * time.Second
+	allowTimeOffset = -1 * time.Duration(5) * time.Minute
 	initLogger()
+	initStatusBind()
 }
 
 func setCookie(name string, value string, session bool, expires time.Time) *fiber.Cookie {
@@ -77,6 +81,14 @@ func createMsg(level string, msg string) msgStruct {
 	return msgStruct{
 		Level: level,
 		Msg:   msg,
+	}
+}
+
+func createMsgWithDetail(level string, msg string, detail string) msgStruct {
+	return msgStruct{
+		Level:  level,
+		Msg:    msg,
+		Detail: detail,
 	}
 }
 
@@ -113,7 +125,6 @@ func formValidate(c *fiber.Ctx, bind *fiber.Map, form interface{}, template *str
 	if errors != nil {
 		var msg []msgStruct
 		for _, err := range errors {
-			tool.Print(err)
 			msg = append(msg, createMsg(warnMsgLevel, formErrorHandler(err, form)))
 		}
 		(*bind)["messages"] = msg
@@ -136,7 +147,6 @@ func formErrorHandler(er *ErrorResponse, form interface{}) string {
 	case "oneof":
 		msg += ": 輸入值錯誤"
 	}
-	tool.Print(msg)
 	return msg
 }
 

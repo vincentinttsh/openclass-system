@@ -19,14 +19,6 @@ var subjectChoice = map[string]string{
 	"other":   "其他",
 }
 
-type baseClassStruct struct {
-	Name      string `form:"name" validate:"required" i18n:"課程名稱"`
-	Classroom string `form:"classroom" validate:"required" i18n:"上課教室"`
-	Date      string `form:"date" validate:"required" i18n:"上課日期"`
-	StartTime string `form:"startTime" validate:"required" i18n:"開始時間"`
-	EndTime   string `form:"endTime" validate:"required" i18n:"結束時間"`
-}
-
 type registerUser struct {
 	Username   string `form:"username" i18n:"姓名"`
 	Email      string `form:"email" i18n:"Email address"`

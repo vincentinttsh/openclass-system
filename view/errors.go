@@ -25,6 +25,14 @@ func badRequest(c *fiber.Ctx, msg string, template string, bind *fiber.Map) erro
 	return c.Status(fiber.StatusBadRequest).Render(template, *bind)
 }
 
+func serverError(c *fiber.Ctx, err error, template string, bind *fiber.Map) error {
+	sugar.Errorln(err)
+	(*bind)["messages"] = []msgStruct{
+		createMsg(errMsgLevel, serverErrorMsg),
+	}
+	return c.Status(fiber.StatusInternalServerError).Render(template, *bind)
+}
+
 func dbReadError(c *fiber.Ctx, err error, template string, bind *fiber.Map) error {
 	sugar.Errorln(err)
 	(*bind)["messages"] = []msgStruct{

@@ -1,7 +1,7 @@
 package view
 
 import (
-	"vincentinttsh/openclass-system/pkg/mode"
+	"vincentinttsh/openclass-system/internal/mode"
 
 	"go.uber.org/zap"
 )

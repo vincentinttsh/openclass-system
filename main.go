@@ -8,7 +8,7 @@ import (
 	"os/signal"
 	"syscall"
 	"time"
-	"vincentinttsh/openclass-system/pkg/mode"
+	"vincentinttsh/openclass-system/internal/mode"
 	"vincentinttsh/openclass-system/router"
 	"vincentinttsh/openclass-system/view"
 

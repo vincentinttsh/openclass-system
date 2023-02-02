@@ -1,7 +1,7 @@
 package router
 
 import (
-	"vincentinttsh/openclass-system/pkg/jwt"
+	"vincentinttsh/openclass-system/internal/jwt"
 
 	"github.com/gofiber/fiber/v2"
 )
@@ -37,7 +37,12 @@ func needLogin() fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		next := baseURL + c.OriginalURL()
 		if c.Locals("id") == nil {
-			return c.Redirect("/login?status=notfound&next=" + next)
+			return c.RedirectToRoute("login", fiber.Map{
+				"queries": map[string]string{
+					"status": "not_login",
+					"next":   next,
+				},
+			})
 		}
 
 		return c.Next()
@@ -48,10 +53,15 @@ func needRegistered() fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		next := baseURL + c.OriginalURL()
 		if c.Locals("id") == nil {
-			return c.Redirect("/login?status=notfound&next=" + next)
+			return c.RedirectToRoute("login", fiber.Map{
+				"queries": map[string]string{
+					"status": "not_login",
+					"next":   next,
+				},
+			})
 		}
 		if c.Locals("subject") == "" || c.Locals("department") == "" {
-			return c.Redirect("/auth/complete")
+			return c.RedirectToRoute("authComplete", fiber.Map{})
 		}
 
 		return c.Next()
@@ -62,13 +72,22 @@ func needSuperAdmin() fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		next := baseURL + c.OriginalURL()
 		if c.Locals("id") == nil {
-			return c.Redirect("/login?status=notfound&next=" + next)
+			return c.RedirectToRoute("login", fiber.Map{
+				"queries": map[string]string{
+					"status": "not_login",
+					"next":   next,
+				},
+			})
 		}
 		if c.Locals("subject") == "" || c.Locals("department") == "" {
-			return c.Redirect("/auth/complete")
+			return c.RedirectToRoute("authComplete", fiber.Map{})
 		}
 		if c.Locals("bind").(fiber.Map)["super_admin"] != true {
-			return c.Redirect("/?status=permission")
+			return c.RedirectToRoute("home", fiber.Map{
+				"queries": map[string]string{
+					"status": "no_permission",
+				},
+			})
 		}
 
 		return c.Next()

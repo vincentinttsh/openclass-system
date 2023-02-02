@@ -6,8 +6,8 @@ import (
 	"strings"
 	"time"
 
+	"vincentinttsh/openclass-system/internal/jwt"
 	"vincentinttsh/openclass-system/model"
-	"vincentinttsh/openclass-system/pkg/jwt"
 
 	"github.com/gofiber/fiber/v2"
 	"google.golang.org/api/idtoken"
@@ -93,7 +93,7 @@ func Login(c *fiber.Ctx) error {
 	}
 
 	c.Cookie(setCookie("token", token, false, expire))
-	return c.Redirect("/auth/complete")
+	return c.RedirectToRoute("authComplete", fiber.Map{})
 }
 
 // Complete is a function that redirect user to next page
@@ -112,14 +112,14 @@ func Complete(c *fiber.Ctx) error {
 	err = model.GetUserByID(&userID, &user)
 	if err == gorm.ErrRecordNotFound {
 		c.Cookie(setCookie("token", "", false, time.Now()))
-		return c.RedirectBack("/")
+		return c.RedirectToRoute("home", fiber.Map{
+			"queries": map[string]string{
+				"status": "user_not_found",
+			},
+		})
 	}
 	if err != nil {
-		sugar.Error(err)
-		bind["messages"] = []msgStruct{
-			createMsg(errMsgLevel, serverErrorMsg),
-		}
-		return c.Status(fiber.StatusInternalServerError).Render(template, bind)
+		return serverError(c, err, template, &bind)
 	}
 	if user.Subject == "" || user.Department == "" {
 		form.Username = user.Name
@@ -134,7 +134,23 @@ func Complete(c *fiber.Ctx) error {
 	// Next URL must be same host
 	next, err = url.ParseRequestURI(c.Cookies("redirect", ""))
 	if err != nil || next.Scheme+"://"+next.Host != baseURL {
-		return c.Redirect("/?status=login")
+		errMsg := "no error"
+		if err != nil {
+			errMsg = err.Error()
+		}
+		sugar.Infow(
+			"Redirect vulnerability attack",
+			"IP", c.IP(),
+			"Error", errMsg,
+			"Next", next.String(),
+			"username", user.Name,
+			"email", user.Email,
+		)
+		return c.RedirectToRoute("home", fiber.Map{
+			"queries": map[string]string{
+				"status": "login",
+			},
+		})
 	}
 	return c.Redirect(next.String())
 }
@@ -142,25 +158,27 @@ func Complete(c *fiber.Ctx) error {
 // Logout is a function that logout user
 func Logout(c *fiber.Ctx) error {
 	c.Cookie(setCookie("token", "", false, time.Now()))
-	return c.Redirect("/")
+	return c.RedirectToRoute("home", fiber.Map{
+		"queries": map[string]string{
+			"status": "logout",
+		},
+	})
 }
 
 // LoginPage is a function that render login page
 func LoginPage(c *fiber.Ctx) error {
 	var bind fiber.Map = c.Locals("bind").(fiber.Map)
-	var status string = c.Query("status", "")
-	var next = c.Query("next", baseURL)
+	var next = c.Query("next", baseURL+"?status=login")
 
 	if c.Locals("id") != nil {
-		return c.Redirect("/")
+		return c.RedirectToRoute("home", fiber.Map{
+			"queries": map[string]string{
+				"status": "is_login",
+			},
+		})
 	}
 	c.Cookie(setCookie("redirect", next, true, time.Now()))
-
-	if status == "notfound" {
-		bind["messages"] = []msgStruct{
-			createMsg(infoMsgLevel, "請重新登入"),
-		}
-	}
+	statusBinding(c, &bind)
 
 	return c.Status(fiber.StatusOK).Render("auth/login", bind)
 }
