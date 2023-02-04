@@ -58,6 +58,12 @@ func (object *Course) BeforeCreate(tx *gorm.DB) (err error) {
 }
 
 // AfterFind is a hook to format the date and time
+func (object *CourseReservation) AfterFind(tx *gorm.DB) (err error) {
+	object.Course.AfterFind(tx)
+	return
+}
+
+// AfterFind is a hook to format the date and time
 func (object *Course) AfterFind(tx *gorm.DB) (err error) {
 	object.DateCH = object.Start.Format("2006年01月02日")
 	object.Date = object.Start.Format(dateFormat)
