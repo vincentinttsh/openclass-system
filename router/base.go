@@ -60,6 +60,8 @@ func SetupRouter(app *fiber.App) {
 	app.Post("/class/:id/design", needRegistered(), view.CourseDesign)
 	app.Get("/class/:id/preparation", needRegistered(), view.CoursePreparation)
 	app.Post("/class/:id/preparation", needRegistered(), view.CoursePreparation)
+	app.Get("/class/:id/briefing", needRegistered(), view.CourseBriefing)
+	app.Post("/class/:id/briefing", needRegistered(), view.CourseBriefing)
 
 	// need registered  (without CSRF)
 	app.Get("/class/:id/participation", needRegistered(), view.AttendClass)

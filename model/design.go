@@ -37,11 +37,6 @@ type SHDesignDetail struct {
 	Allocation      string    `gorm:"not null;" form:"allocation" i18n:"時間分配"`
 }
 
-// Save 儲存高中課程教學活動設計表
-func (object *SHDesign) Save() error {
-	return db.Save(object).Error
-}
-
 // GetTimeString get 高中課程教學活動設計表的時間字串
 func (object *SHDesign) GetTimeString() (string, string, string) {
 	return object.Date, object.StartTime, object.EndTime
@@ -57,6 +52,11 @@ func (object *SHDesign) SetEndTime(t time.Time) {
 	object.End = t
 }
 
+// Save 儲存高中課程教學活動設計表
+func (object *SHDesign) Save() error {
+	return db.Save(object).Error
+}
+
 // Save 儲存高中課程教學活動設計表的詳細資料
 func (object *SHDesignDetail) Save() error {
 	return db.Save(object).Error
@@ -65,19 +65,6 @@ func (object *SHDesignDetail) Save() error {
 // Delete delete a 高中課程教學活動設計表詳細資料
 func (object *SHDesignDetail) Delete() error {
 	return db.Delete(object).Error
-}
-
-// GetSHDesignByCourseID 依照課程編號取得高中課程教學活動設計表
-func GetSHDesignByCourseID(courseID *SQLBasePK, object *SHDesign) error {
-	object.CourseID = *courseID
-	return db.Model(SHDesign{}).Joins("Course").Preload("Course.User").First(&object).Error
-}
-
-// GetCourseDesignDetails 取得高中課程教學活動設計表的詳細資料
-func GetCourseDesignDetails(SHDesignID *SQLBasePK, objects *[]SHDesignDetail) error {
-	return db.Where(&SHDesignDetail{
-		SHDesignID: *SHDesignID,
-	}).Find(&objects).Order("id").Error
 }
 
 // AfterFind is a hook to format the date and time
@@ -90,4 +77,18 @@ func (object *SHDesign) AfterFind(tx *gorm.DB) (err error) {
 		object.Details = make([]SHDesignDetail, 1)
 	}
 	return
+}
+
+// GetSHDesignByCourseID 依照課程編號取得高中課程教學活動設計表
+func GetSHDesignByCourseID(courseID *SQLBasePK, object *SHDesign) error {
+	object.CourseID = *courseID
+	return db.Joins("Course").Preload("Course.User").
+		Where(object).First(object).Error
+}
+
+// GetCourseDesignDetails 取得高中課程教學活動設計表的詳細資料
+func GetCourseDesignDetails(SHDesignID *SQLBasePK, objects *[]SHDesignDetail) error {
+	return db.Where(&SHDesignDetail{
+		SHDesignID: *SHDesignID,
+	}).Find(&objects).Order("id").Error
 }

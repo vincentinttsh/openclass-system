@@ -11,8 +11,6 @@ type SHPreparation struct {
 	BaseModel
 	DurationBaseModel
 	Subject    string    `gorm:"not null;" form:"subject" i18n:"學科"`
-	User       User      `gorm:"constraint:OnUpdate:CASCADE,OnDelete:RESTRICT" i18n:"填寫者"`
-	UserID     SQLBasePK `gorm:"not null; index"`
 	Grade      string    `gorm:"not null;" form:"grade" i18n:"教學年級"`
 	Name       string    `gorm:"not null;" form:"name" i18n:"教學單元"`
 	Material   string    `gorm:"not null;" form:"material" i18n:"教材來源"`
@@ -47,7 +45,8 @@ func (object *SHPreparation) SetEndTime(t time.Time) {
 // GetSHPreparationByCourseID 依照課程編號取得共同備課記錄表
 func GetSHPreparationByCourseID(courseID *SQLBasePK, object *SHPreparation) error {
 	object.CourseID = *courseID
-	return db.Joins("Course").Preload("Course.User").First(&object).Error
+	return db.Joins("Course").Preload("Course.User").
+		Where(object).First(object).Error
 }
 
 // AfterFind is a hook to format the date and time

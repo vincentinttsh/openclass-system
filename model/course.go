@@ -57,9 +57,16 @@ func (object *Course) BeforeCreate(tx *gorm.DB) (err error) {
 	return
 }
 
-// AfterFind is a hook to format the date and time
-func (object *CourseReservation) AfterFind(tx *gorm.DB) (err error) {
-	object.Course.AfterFind(tx)
+// BeforeCreate check if the user is the course owner 不能報到自己的課程
+func (object *CourseReservation) BeforeCreate(tx *gorm.DB) (err error) {
+	var course Course
+	err = GetCourse(&object.CourseID, &course, false)
+	if err != nil {
+		return
+	}
+	if course.UserID == object.UserID {
+		err = ErrAttendYourClass
+	}
 	return
 }
 
@@ -83,16 +90,9 @@ func (object *Course) AfterFind(tx *gorm.DB) (err error) {
 	return
 }
 
-// BeforeCreate check if the user is the course owner 不能報到自己的課程
-func (object *CourseReservation) BeforeCreate(tx *gorm.DB) (err error) {
-	var course Course
-	err = GetCourse(&object.CourseID, &course, false)
-	if err != nil {
-		return
-	}
-	if course.UserID == object.UserID {
-		err = ErrAttendYourClass
-	}
+// AfterFind is a hook to format the date and time
+func (object *CourseReservation) AfterFind(tx *gorm.DB) (err error) {
+	object.Course.AfterFind(tx)
 	return
 }
 
@@ -168,11 +168,19 @@ func GetUserObserveCourses(userID *SQLBasePK, reservations *[]CourseReservation)
 	).Order("`course_reservations`.`created_at` DESC").Find(reservations).Error
 }
 
+// GetCourseObserve get the course attendees
+func GetCourseObserve(courseID *SQLBasePK, reservations *[]CourseReservation) error {
+	return db.Joins("User").Where(&CourseReservation{
+		CourseID: *courseID,
+		Attended: true,
+	}).Order("`course_reservations`.`created_at` DESC").Find(reservations).Error
+}
+
 // GetCourse get a class
 func GetCourse(classID *SQLBasePK, class *Course, prefetch bool) error {
 	class.ID = *classID
 	if prefetch {
-		return db.Joins("User").First(class, classID).Error
+		return db.Joins("User").First(class).Error
 	}
-	return db.First(class, classID).Error
+	return db.First(class).Error
 }

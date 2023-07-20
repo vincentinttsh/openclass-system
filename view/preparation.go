@@ -43,7 +43,6 @@ func createCoursePreparationSH(c *fiber.Ctx) error {
 	case gorm.ErrRecordNotFound:
 		form.Course = courseData
 		form.Subject = subjectChoice[courseData.User.Subject]
-		form.User = courseData.User
 		form.Name = courseData.Name
 		form.Date = courseData.Start.Format(dateFormat)
 		form.StartTime = courseData.Start.Format(pureTimeFormat)

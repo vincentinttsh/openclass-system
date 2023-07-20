@@ -1,9 +1,9 @@
 package view
 
 const (
-	dateFormat     string = "02/01/2006"
+	dateFormat     string = "2006-01-02"
 	pureTimeFormat string = "03:04 PM"
-	timeFormat     string = "02/01/200603:04 PM"
+	timeFormat     string = "2006-01-0203:04 PM"
 )
 
 var departmentChoice = map[string]string{
