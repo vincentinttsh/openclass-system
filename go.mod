@@ -3,7 +3,7 @@ module vincentinttsh/openclass-system
 go 1.24.0
 
 require (
-	github.com/gofiber/fiber/v2 v2.52.9
+	github.com/gofiber/fiber/v2 v2.52.11
 	github.com/gofiber/storage/redis v0.0.0-20230109091934-d46ce172d62c
 	github.com/gofiber/template v1.7.3
 	github.com/golang-jwt/jwt/v4 v4.5.2
